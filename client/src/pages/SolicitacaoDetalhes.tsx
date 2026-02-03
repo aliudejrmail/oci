@@ -100,6 +100,7 @@ export default function SolicitacaoDetalhes() {
       }
       await api.patch(`/solicitacoes/${id}/status`, body)
       if (novoStatus === 'EM_ANDAMENTO') {
+        await carregarSolicitacao()
         setModalProcedimentosAberto(true)
       } else if (novoStatus === 'CANCELADA') {
         setModalCancelarAberto(false)

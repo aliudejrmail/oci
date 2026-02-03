@@ -20,9 +20,22 @@ export function isProcedimentoConsultaOuTeleconsulta(nome: string): boolean {
 }
 
 /**
+ * Consulta médica especializada (presencial ou teleconsulta): nome contém "consulta" e "especializada".
+ * Alinhado com o backend para regra de mutual exclusividade (DISPENSADO).
+ */
+export function isConsultaMedicaEspecializada(nome: string): boolean {
+  const n = (nome || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  return n.includes('consulta') && n.includes('especializada')
+}
+
+/**
  * Retorna o status para exibição na UI.
- * Quando um procedimento consulta/teleconsulta está REALIZADO e outro do mesmo grupo
+ * Quando um procedimento consulta/teleconsulta ESPECIALIZADA está REALIZADO e outro do mesmo grupo
  * está PENDENTE ou AGENDADO, o não executado exibe como DISPENSADO.
+ * Usa isConsultaMedicaEspecializada para alinhar com a regra do backend.
  */
 export function getStatusExibicao(
   execucao: ExecucaoParaDisplay,
@@ -32,11 +45,11 @@ export function getStatusExibicao(
     return execucao.status
   }
 
-  if (isProcedimentoConsultaOuTeleconsulta(execucao.procedimento.nome)) {
+  if (isConsultaMedicaEspecializada(execucao.procedimento.nome)) {
     const outroNoGrupoExecutado = todasExecucoes.some(
       (e) =>
         e.id !== execucao.id &&
-        isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome) &&
+        isConsultaMedicaEspecializada(e.procedimento.nome) &&
         e.status === 'REALIZADO'
     )
     if (outroNoGrupoExecutado) return 'DISPENSADO'
