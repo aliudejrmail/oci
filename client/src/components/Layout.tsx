@@ -78,7 +78,7 @@ export default function Layout() {
     <div className="min-h-screen bg-gray-50">
       {/* Overlay mobile - fecha sidebar ao clicar fora */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity ${sidebarAberta ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity print:hidden ${sidebarAberta ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={fecharSidebar}
         aria-hidden="true"
       />
@@ -87,7 +87,7 @@ export default function Layout() {
       <button
         type="button"
         onClick={() => setSidebarAberta(true)}
-        className="fixed top-4 left-4 z-30 md:hidden p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100"
+        className="fixed top-4 left-4 z-30 md:hidden p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100 print:hidden"
         aria-label="Abrir menu"
       >
         <Menu size={24} />
@@ -95,7 +95,7 @@ export default function Layout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 transform transition-transform duration-200 ease-out md:translate-x-0 ${
+        className={`fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 transform transition-transform duration-200 ease-out md:translate-x-0 print:hidden ${
           sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
@@ -158,7 +158,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="md:ml-64 p-4 pt-16 md:pt-8 md:p-8 min-h-screen">
+      <main className="md:ml-64 p-4 pt-16 md:pt-8 md:p-8 min-h-screen print:ml-0 print:pt-4 print:p-4">
         <Outlet />
       </main>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
-import { BarChart3, FileText, Calendar, Filter, Download } from 'lucide-react'
+import { BarChart3, FileText, Calendar, Filter, Download, Printer } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -79,6 +79,12 @@ export default function Relatorios() {
     }
   }
 
+  const tituloRelatorio = opcoes.find((o) => o.id === tipo)?.label ?? 'Relatório'
+
+  const imprimir = () => {
+    window.print()
+  }
+
   const exportarCsv = (dados: unknown[], nomeArquivo: string) => {
     if (!dados.length) return
     const cabecalho = Object.keys(dados[0] as Record<string, unknown>).join(';')
@@ -99,7 +105,7 @@ export default function Relatorios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 print:hidden">
         <div className="p-2 bg-primary-50 rounded-lg">
           <BarChart3 className="text-primary-600" size={24} />
         </div>
@@ -109,7 +115,7 @@ export default function Relatorios() {
         </div>
       </div>
 
-      <form onSubmit={gerarRelatorio} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <form onSubmit={gerarRelatorio} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm print:hidden">
         <div className="flex items-center gap-2 mb-4">
           <Filter size={18} className="text-gray-600" />
           <h2 className="font-semibold text-gray-800">Filtros e tipo de relatório</h2>
@@ -223,37 +229,53 @@ export default function Relatorios() {
       </form>
 
       {erro && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 print:hidden">
           {erro}
         </div>
       )}
 
       {resultado && (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div id="relatorio-impressao" className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
             <h2 className="font-semibold text-gray-800">Resultado</h2>
-            {tipo === 'por-periodo' && Array.isArray((resultado as { solicitacoes?: unknown[] }).solicitacoes) && (
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => exportarCsv((resultado as { solicitacoes: unknown[] }).solicitacoes, 'solicitacoes')}
-                className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"
+                onClick={imprimir}
+                className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
               >
-                <Download size={16} />
-                Exportar CSV
+                <Printer size={16} />
+                Imprimir
               </button>
-            )}
-            {tipo === 'procedimentos-executados' && Array.isArray((resultado as { execucoes?: unknown[] }).execucoes) && (
-              <button
-                type="button"
-                onClick={() => exportarCsv((resultado as { execucoes: unknown[] }).execucoes, 'procedimentos-executados')}
-                className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700"
-              >
-                <Download size={16} />
-                Exportar CSV
-              </button>
-            )}
+              {tipo === 'por-periodo' && Array.isArray((resultado as { solicitacoes?: unknown[] }).solicitacoes) && (
+                <button
+                  type="button"
+                  onClick={() => exportarCsv((resultado as { solicitacoes: unknown[] }).solicitacoes, 'solicitacoes')}
+                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
+                >
+                  <Download size={16} />
+                  Exportar CSV
+                </button>
+              )}
+              {tipo === 'procedimentos-executados' && Array.isArray((resultado as { execucoes?: unknown[] }).execucoes) && (
+                <button
+                  type="button"
+                  onClick={() => exportarCsv((resultado as { execucoes: unknown[] }).execucoes, 'procedimentos-executados')}
+                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
+                >
+                  <Download size={16} />
+                  Exportar CSV
+                </button>
+              )}
+            </div>
           </div>
           <div className="p-4">
+            <div className="hidden print:block mb-4 pb-2 border-b border-gray-200">
+              <h1 className="text-lg font-bold text-gray-900">Relatório - {tituloRelatorio}</h1>
+              <p className="text-xs text-gray-500 mt-1">
+                Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} | Sec. Municipal de Saúde - Parauapebas
+              </p>
+            </div>
             <ResultadoRelatorio tipo={tipo} resultado={resultado} />
           </div>
         </div>
