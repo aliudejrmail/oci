@@ -82,6 +82,18 @@ export function validarMotivoSaida(motivo: string | null | undefined): { valido:
 }
 
 /**
+ * Indica se o procedimento é ANATOMO-PATOLÓGICO (por nome).
+ * Ex.: "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO", "EXAME ANATOMO PATOLÓGICO PARA CONGELAMENTO"
+ */
+export function isProcedimentoAnatomoPatologico(nome: string): boolean {
+  const n = (nome || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return n.includes('anatomo') && n.includes('patol');
+}
+
+/**
  * Indica se o procedimento é do tipo consulta ou teleconsulta (por nome).
  * Usado para regra: OCIs com duas consultas obrigatórias (uma consulta e uma teleconsulta)
  * exigem apenas que uma delas seja registrada como realizada (portarias MS).

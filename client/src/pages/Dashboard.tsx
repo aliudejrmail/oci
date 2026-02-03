@@ -303,16 +303,16 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Alertas: resultado de biópsia pendente (coleta registrada) – prazos por tipo OCI (lei federal, oncologia) */}
+      {/* Alertas: procedimentos anatomo-patológicos obrigatórios – coleta registrada, resultado pendente */}
       {alertasResultadoBiopsia.length > 0 && (
         <div className="bg-white rounded-lg shadow p-3 border-l-4 border-amber-500">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
               <FileCheck className="text-amber-600" size={14} />
-              Pendentes de resultado de biópsia
+              Pendentes de resultado anatomo-patológico
             </h2>
             <span className="text-xs text-gray-500">
-              Oncológica: 30 dias desde o registro da consulta (1º procedimento). Geral: 30 dias desde a coleta. O tipo é exibido em cada item.
+              Procedimentos anatomo-patológicos obrigatórios com coleta registrada e resultado pendente. Oncológica: 30 dias desde a consulta. Geral: 30 dias desde a coleta.
             </span>
           </div>
           <div className="space-y-2">

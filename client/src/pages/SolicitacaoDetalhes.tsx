@@ -8,7 +8,7 @@ import RegistroAutorizacaoApacModal from '../components/RegistroAutorizacaoApacM
 import RegistroProcedimentosModal from '../components/RegistroProcedimentosModal'
 import EditarSolicitacaoModal from '../components/EditarSolicitacaoModal'
 import AgendarModal from '../components/AgendarModal'
-import { getStatusExibicao } from '../utils/procedimento-display'
+import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
 
 // Helper para formatar data sem problemas de timezone
 // Converte string ISO para Date local considerando apenas a parte da data
@@ -715,6 +715,8 @@ export default function SolicitacaoDetalhes() {
                       ? 'REALIZADO'
                       : statusExibicao === 'DISPENSADO'
                       ? 'DISPENSADO'
+                      : execucao.dataColetaMaterialBiopsia && !execucao.dataRegistroResultadoBiopsia && isProcedimentoAnatomoPatologico(execucao.procedimento?.nome ?? '')
+                      ? 'Pendente – aguardando resultado'
                       : execucao.status}
                   </span>
                   {statusExibicao === 'REALIZADO' && (

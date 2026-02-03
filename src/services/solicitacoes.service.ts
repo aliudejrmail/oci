@@ -6,6 +6,7 @@ import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
   obrigatoriosSatisfeitos,
+  isProcedimentoAnatomoPatologico,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
@@ -600,6 +601,19 @@ export class SolicitacoesService {
     });
     if (!execucaoAtual) {
       throw new Error('Execução não encontrada');
+    }
+
+    // ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado para marcar como REALIZADO
+    const obrigatorio = (execucaoAtual.procedimento as any).obrigatorio !== false;
+    const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(execucaoAtual.procedimento.nome);
+    if (data.status === STATUS_EXECUCAO.REALIZADO && ehAnatomoPatologicoObrigatorio) {
+      const temColeta = data.dataColetaMaterialBiopsia != null || execucaoAtual.dataColetaMaterialBiopsia != null;
+      const temResultado = data.dataRegistroResultadoBiopsia != null || execucaoAtual.dataRegistroResultadoBiopsia != null;
+      if (!temColeta || !temResultado) {
+        throw new Error(
+          'Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado.'
+        );
+      }
     }
 
     // Só permitir marcar outros procedimentos como REALIZADO se a consulta médica especializada já tiver sido realizada

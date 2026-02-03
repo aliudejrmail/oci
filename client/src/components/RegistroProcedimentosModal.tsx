@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { X, CheckCircle, Calendar, Trash2 } from 'lucide-react'
-import { getStatusExibicao } from '../utils/procedimento-display'
+import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
 
 interface ProcedimentoExecucao {
   id: string
@@ -11,6 +11,7 @@ interface ProcedimentoExecucao {
     nome: string
     codigo: string
     tipo: string
+    obrigatorio?: boolean
   }
   status: string
   dataExecucao?: string | null
@@ -114,6 +115,11 @@ export default function RegistroProcedimentosModal({
     ehBiopsia: boolean
     /** true se for consulta médica em atenção especializada (presencial ou teleconsulta) */
     ehConsultaEspecializada: boolean
+    /** true se for ANATOMO-PATOLÓGICO obrigatório (exige data coleta e data resultado) */
+    ehAnatomoPatologicoObrigatorio: boolean
+    resultadoBiopsia: string
+    dataColetaMaterialBiopsia: string
+    dataRegistroResultadoBiopsia: string
   }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [excluindo, setExcluindo] = useState<string | null>(null)
@@ -139,6 +145,14 @@ export default function RegistroProcedimentosModal({
       const ehBiopsia = isProcedimentoBiopsia(exec.procedimento.nome)
       const hoje = new Date().toISOString().split('T')[0]
       const ehConsultaEspecializada = isConsultaMedicaEspecializada(exec.procedimento.nome)
+      const obrigatorio = (exec.procedimento as any).obrigatorio !== false
+      const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(exec.procedimento.nome)
+      const dataColeta = exec.dataColetaMaterialBiopsia
+        ? new Date(exec.dataColetaMaterialBiopsia).toISOString().split('T')[0]
+        : ''
+      const dataRegistro = exec.dataRegistroResultadoBiopsia
+        ? new Date(exec.dataRegistroResultadoBiopsia).toISOString().split('T')[0]
+        : ''
       const dataAgendamentoStr = (exec as any).dataAgendamento
         ? new Date((exec as any).dataAgendamento).toISOString().split('T')[0]
         : ''
@@ -156,7 +170,11 @@ export default function RegistroProcedimentosModal({
           ? new Date(exec.dataExecucao).toISOString().split('T')[0]
           : ehAgendado && dataAgendamentoStr ? dataAgendamentoStr : hoje,
         ehBiopsia,
-        ehConsultaEspecializada
+        ehConsultaEspecializada,
+        ehAnatomoPatologicoObrigatorio,
+        resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
+        dataColetaMaterialBiopsia: dataColeta,
+        dataRegistroResultadoBiopsia: dataRegistro
       }
     })
 
@@ -185,7 +203,13 @@ export default function RegistroProcedimentosModal({
       setErro('O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.')
       return
     }
-    // Biópsia: apenas data de realização é necessária (resultado/coleta opcionais)
+    // ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado antes de marcar como realizado
+    if (!proc.realizado && proc.ehAnatomoPatologicoObrigatorio) {
+      if (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia) {
+        setErro('Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado antes de marcar como realizado.')
+        return
+      }
+    }
     setErro(null)
     novos[index].realizado = !novos[index].realizado
     if (!novos[index].realizado) {
@@ -201,6 +225,20 @@ export default function RegistroProcedimentosModal({
     const novos = [...procedimentos]
     novos[index].dataExecucao = data
     setProcedimentos(novos)
+  }
+
+  const handleDataColetaChange = (index: number, value: string) => {
+    const novos = [...procedimentos]
+    novos[index].dataColetaMaterialBiopsia = value
+    setProcedimentos(novos)
+    if (erro) setErro(null)
+  }
+
+  const handleDataResultadoChange = (index: number, value: string) => {
+    const novos = [...procedimentos]
+    novos[index].dataRegistroResultadoBiopsia = value
+    setProcedimentos(novos)
+    if (erro) setErro(null)
   }
 
   const handleExcluirExecucao = async (execucaoId: string, index: number) => {
@@ -279,7 +317,14 @@ export default function RegistroProcedimentosModal({
       return
     }
 
-    // Biópsia: apenas data de realização é necessária
+    // ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado
+    const anatomoSemColetaOuResultado = procedimentosRealizados.find(
+      (p) => p.ehAnatomoPatologicoObrigatorio && (!p.dataColetaMaterialBiopsia || !p.dataRegistroResultadoBiopsia)
+    )
+    if (anatomoSemColetaOuResultado) {
+      setErro('Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado.')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -294,8 +339,12 @@ export default function RegistroProcedimentosModal({
           status: 'REALIZADO',
           dataExecucao: dataLocal.toISOString()
         }
-        // Biópsia: apenas status e dataExecucao (resultado/coleta opcionais)
-
+        if (proc.ehAnatomoPatologicoObrigatorio && proc.dataColetaMaterialBiopsia && proc.dataRegistroResultadoBiopsia) {
+          const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
+          const [ar, mr, dr] = proc.dataRegistroResultadoBiopsia.split('-').map(Number)
+          payload.dataColetaMaterialBiopsia = new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
+          payload.dataRegistroResultadoBiopsia = new Date(ar, mr - 1, dr, 12, 0, 0).toISOString()
+        }
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
 
@@ -411,7 +460,8 @@ export default function RegistroProcedimentosModal({
                         submitting ||
                         dispensado ||
                         !podeRegistrarPorData(proc) ||
-                        (!proc.ehConsultaEspecializada && !consultaJaRealizada)
+                        (!proc.ehConsultaEspecializada && !consultaJaRealizada) ||
+                        (proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia))
                       }
                       title={
                         dispensado
@@ -420,7 +470,9 @@ export default function RegistroProcedimentosModal({
                             ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
                             : !proc.ehConsultaEspecializada && !consultaJaRealizada
                               ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
-                              : undefined
+                              : proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia)
+                                ? 'Informe a data de coleta de material e a data do resultado'
+                                : undefined
                       }
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
                     />
@@ -453,7 +505,49 @@ export default function RegistroProcedimentosModal({
                       </p>
                     )}
 
-                    {/* Biópsia: apenas data de execução é necessária (como os demais procedimentos) */}
+                    {/* ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado */}
+                    {proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (
+                      <div className="mt-1.5 ml-8 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label htmlFor={`coleta-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Data de coleta de material <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`coleta-${proc.execucaoId}`}
+                              value={proc.dataColetaMaterialBiopsia}
+                              onChange={(e) => handleDataColetaChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              max={hoje}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label htmlFor={`resultado-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Data do resultado <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`resultado-${proc.execucaoId}`}
+                              value={proc.dataRegistroResultadoBiopsia}
+                              onChange={(e) => handleDataResultadoChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              min={proc.dataColetaMaterialBiopsia || undefined}
+                              max={hoje}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-amber-700 sm:col-span-2">
+                          Procedimentos anatomo-patológicos obrigatórios exigem data de coleta e data do resultado para serem marcados como realizados.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (

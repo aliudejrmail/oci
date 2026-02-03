@@ -1053,8 +1053,8 @@
       },
       {
         "codigoSigtap": "0203020081",
-        "nome": "EXAME ANATOMO-PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRÚRGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
-        "obrigatorio": false,
+        "nome": "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO - BIÓPSIA",
+        "obrigatorio": true,
         "ordem": 3
       }
     ]
@@ -1079,8 +1079,8 @@
       },
       {
         "codigoSigtap": "0203020081",
-        "nome": "EXAME ANATOMO-PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRÚRGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
-        "obrigatorio": false,
+        "nome": "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO - BIÓPSIA",
+        "obrigatorio": true,
         "ordem": 3
       }
     ]

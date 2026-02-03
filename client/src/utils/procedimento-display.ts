@@ -20,6 +20,18 @@ export function isProcedimentoConsultaOuTeleconsulta(nome: string): boolean {
 }
 
 /**
+ * Indica se o procedimento é ANATOMO-PATOLÓGICO (por nome).
+ * Procedimentos anatomo-patológicos obrigatórios exigem data de coleta e data de resultado.
+ */
+export function isProcedimentoAnatomoPatologico(nome: string): boolean {
+  const n = (nome || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  return n.includes('anatomo') && n.includes('patol')
+}
+
+/**
  * Consulta médica especializada (presencial ou teleconsulta): nome contém "consulta" e "especializada".
  * Alinhado com o backend para regra de mutual exclusividade (DISPENSADO).
  */
