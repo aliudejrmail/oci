@@ -248,7 +248,7 @@ export class SolicitacoesController {
   async uploadAnexos(req: Request, res: Response) {
     try {
       const { id: solicitacaoId } = req.params;
-      const files = (req as Request & { files?: Express.Multer.File[] }).files;
+      const files = (req as Request & { files?: { originalname: string; path: string; mimetype?: string; size: number }[] }).files;
       if (!files || files.length === 0) {
         return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
       }

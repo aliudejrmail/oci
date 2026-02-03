@@ -3,12 +3,19 @@ import path from 'path';
 import fs from 'fs';
 import { Request } from 'express';
 
+interface MulterFileLike {
+  originalname: string;
+  path?: string;
+  mimetype?: string;
+  size?: number;
+}
+
 const MAX_SIZE_MB = 10;
 const UPLOAD_BASE = path.join(process.cwd(), 'uploads', 'solicitacoes');
 
 export const uploadAnexos = multer({
   storage: multer.diskStorage({
-    destination: (req: Request, _file, cb: (error: Error | null, destination: string) => void) => {
+    destination: (req: Request, _file: MulterFileLike, cb: (error: Error | null, destination: string) => void) => {
       const id = (req.params as { id?: string }).id;
       if (!id) {
         cb(new Error('ID da solicitação não informado'), '');
@@ -22,13 +29,13 @@ export const uploadAnexos = multer({
         cb(e as Error, dir);
       }
     },
-    filename: (_req, file, cb) => {
+    filename: (_req: Request, file: MulterFileLike, cb: (error: Error | null, filename: string) => void) => {
       const ext = path.extname(file.originalname)?.toLowerCase() === '.pdf' ? '.pdf' : '.pdf';
       const base = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       cb(null, `${base}${ext}`);
     }
   }),
-  fileFilter: (req, file, cb: FileFilterCallback) => {
+  fileFilter: (req: Request, file: MulterFileLike, cb: FileFilterCallback) => {
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
