@@ -24,6 +24,8 @@
     "verificar:oci-sigtap": "ts-node scripts/verificar-oci-sigtap.ts",
     "restaurar:procedimentos-oci": "ts-node scripts/restaurar-procedimentos-oci.ts",
     "corrigir:dispensado": "ts-node scripts/corrigir-dispensado-consulta-teleconsulta.ts",
+    "corrigir:status-execucao": "ts-node scripts/corrigir-status-execucao-banco.ts",
+    "corrigir:status-solicitacao": "ts-node scripts/corrigir-status-solicitacao.ts",
     "kill:3001": "for /f \"tokens=5\" %%a in ('netstat -ano ^| findstr :3001') do taskkill /PID %%a /F 2>nul & echo Porta 3001 liberada"
   },
   "keywords": [

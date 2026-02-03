@@ -52,13 +52,39 @@ export default function RegistroProcedimentosModal({
   open,
   onClose,
   onSuccess,
-  solicitacaoId: _solicitacaoId,
+  solicitacaoId,
   execucoes,
   execucoesCompletas
 }: RegistroProcedimentosModalProps) {
-  /** Lista completa para validação e status. Sempre usar quando disponível para incluir REALIZADO mesmo com execucoes filtrada. */
-  const execucoesParaStatus = execucoesCompletas && execucoesCompletas.length > 0 ? execucoesCompletas : execucoes
   const { usuario } = useAuth()
+  /** Execuções vindas do fetch ao abrir (dados frescos) ou das props. */
+  const [execucoesFrescas, setExecucoesFrescas] = useState<ProcedimentoExecucao[] | null>(null)
+  const [carregandoExecucoes, setCarregandoExecucoes] = useState(false)
+
+  useEffect(() => {
+    if (!open || !solicitacaoId) return
+    setCarregandoExecucoes(true)
+    api
+      .get(`/solicitacoes/${solicitacaoId}`)
+      .then((res) => {
+        const execs = res?.data?.execucoes ?? []
+        setExecucoesFrescas(execs)
+      })
+      .catch(() => setExecucoesFrescas(null))
+      .finally(() => setCarregandoExecucoes(false))
+  }, [open, solicitacaoId])
+
+  /** Usar dados frescos do fetch quando disponíveis; senão fallback para props. */
+  const execucoesCompletasParaModal = execucoesFrescas ?? (execucoesCompletas && execucoesCompletas.length > 0 ? execucoesCompletas : execucoes)
+  /** Para EXECUTANTE: exibir só AGENDADO; demais perfis: todos. */
+  const execucoesParaModal =
+    usuario?.tipo === 'EXECUTANTE'
+      ? execucoesCompletasParaModal.filter((e) => e.status === 'AGENDADO').length > 0
+        ? execucoesCompletasParaModal.filter((e) => e.status === 'AGENDADO')
+        : execucoes
+      : execucoesCompletasParaModal
+  /** Lista completa para validação e status (sempre inclui REALIZADO/DISPENSADO). */
+  const execucoesParaStatus = execucoesCompletasParaModal
   const isAdmin = usuario?.tipo === 'ADMIN'
   const [procedimentos, setProcedimentos] = useState<Array<{
     execucaoId: string
@@ -95,10 +121,11 @@ export default function RegistroProcedimentosModal({
 
   useEffect(() => {
     if (!open) return
+    if (carregandoExecucoes) return
 
     // Usar lista completa para ter todos os procedimentos (inclui REALIZADO para consultaJaRealizada)
     const execucoesParaInicializar = execucoesParaStatus
-    const idsExecucoesExibir = new Set(execucoes.map((e) => e.id))
+    const idsExecucoesExibir = new Set(execucoesParaModal.map((e) => e.id))
     const procedimentosInicializados = execucoesParaInicializar
       .filter((exec) => idsExecucoesExibir.size === 0 || idsExecucoesExibir.has(exec.id))
       .map((exec) => {
@@ -142,7 +169,7 @@ export default function RegistroProcedimentosModal({
     setProcedimentos(procedimentosInicializados)
     setErro(null)
     setSucesso(null)
-  }, [open, execucoes, execucoesCompletas])
+  }, [open, execucoes, execucoesCompletas, execucoesParaModal, execucoesParaStatus, carregandoExecucoes])
 
   /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa + fallback nos procedimentos do form. */
   const consultaJaRealizada =
@@ -378,7 +405,7 @@ export default function RegistroProcedimentosModal({
 
       // Também atualizar procedimentos que foram desmarcados (se estavam como REALIZADO)
       const procedimentosDesmarcados = procedimentos.filter(
-        p => !p.realizado && execucoes.find(e => e.id === p.execucaoId)?.status === 'REALIZADO'
+        p => !p.realizado && execucoesParaStatus.find(e => e.id === p.execucaoId)?.status === 'REALIZADO'
       )
 
       const promisesDesmarcar = procedimentosDesmarcados.map(proc =>
@@ -407,7 +434,15 @@ export default function RegistroProcedimentosModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] overflow-y-auto relative">
+        {carregandoExecucoes && (
+          <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20 rounded-lg">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="text-sm text-gray-600">Carregando procedimentos...</span>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
