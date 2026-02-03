@@ -100,21 +100,53 @@ router.put('/:id', async (req, res) => {
       data: dadosOci
     });
 
-    // Se houver procedimentos, atualizar
-    if (procedimentos) {
-      // Deletar procedimentos existentes
-      await prisma.procedimentoOci.deleteMany({
-        where: { ociId: req.params.id }
+    // Se houver procedimentos, atualizar em lugar (evitar deleteMany que viola FK com execucoes_procedimentos)
+    if (procedimentos && Array.isArray(procedimentos)) {
+      const existentes = await prisma.procedimentoOci.findMany({
+        where: { ociId: req.params.id },
+        select: { id: true, codigo: true, codigoSigtap: true }
       });
+      const mapaPorCodigo = new Map(existentes.map((e) => [e.codigo, e]));
 
-      // Criar novos procedimentos
-      if (procedimentos.length > 0) {
-        await prisma.procedimentoOci.createMany({
-          data: procedimentos.map((p: any) => ({
-            ...p,
-            ociId: req.params.id
-          }))
-        });
+      for (let i = 0; i < procedimentos.length; i++) {
+        const p = procedimentos[i] as any;
+        const codigo = p.codigo || p.codigoSigtap;
+        if (!codigo) continue;
+
+        const existente = mapaPorCodigo.get(codigo);
+        const dataProc = {
+          nome: p.nome,
+          descricao: p.descricao ?? null,
+          tipo: p.tipo ?? 'EXAME',
+          ordem: p.ordem ?? i + 1,
+          obrigatorio: p.obrigatorio !== false
+        };
+
+        if (existente) {
+          await prisma.procedimentoOci.update({
+            where: { id: existente.id },
+            data: dataProc
+          });
+        } else {
+          await prisma.procedimentoOci.create({
+            data: {
+              ociId: req.params.id,
+              codigo: String(codigo),
+              codigoSigtap: p.codigoSigtap ?? codigo,
+              ...dataProc
+            }
+          });
+        }
+      }
+
+      // Remover apenas procedimentos que não estão no payload e não têm execuções
+      const codigosPayload = new Set(procedimentos.map((p: any) => p.codigo || p.codigoSigtap).filter(Boolean));
+      const paraRemover = existentes.filter((e) => !codigosPayload.has(e.codigo));
+      for (const proc of paraRemover) {
+        const count = await prisma.execucaoProcedimento.count({ where: { procedimentoId: proc.id } });
+        if (count === 0) {
+          await prisma.procedimentoOci.delete({ where: { id: proc.id } });
+        }
       }
     }
 
