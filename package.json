@@ -9,7 +9,7 @@
     "dev:client": "cd client && npm run dev",
     "build": "npm run build:server && npm run build:client",
     "build:server": "tsc",
-    "build:client": "cd client && npm run build",
+    "build:client": "cd client && npm install --include=dev && npm run build",
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev --name init",
     "db:generate": "prisma generate",

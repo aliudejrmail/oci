@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { Search, Plus, Edit, Trash2, X, Save, Power, PowerOff, UserCog } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -265,13 +265,13 @@ export default function Usuarios() {
               type="text"
               placeholder="Buscar por nome ou e-mail..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
             value={filtroTipo}
-            onChange={(e) => setFiltroTipo(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFiltroTipo(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Todos os perfis</option>
@@ -283,7 +283,7 @@ export default function Usuarios() {
           </select>
           <select
             value={filtroAtivo === null ? 'todos' : filtroAtivo ? 'ativos' : 'inativos'}
-            onChange={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
               const v = e.target.value
               setFiltroAtivo(v === 'todos' ? null : v === 'ativos')
             }}
@@ -315,7 +315,7 @@ export default function Usuarios() {
                   </td>
                 </tr>
               ) : (
-                usuarios.map((u) => (
+                usuarios.map((u: Usuario) => (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.nome}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
@@ -399,7 +399,7 @@ export default function Usuarios() {
                   type="text"
                   id="nome"
                   value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, nome: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="Ex: João Silva"
                   disabled={submitting}
@@ -415,7 +415,7 @@ export default function Usuarios() {
                   type="email"
                   id="email"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, email: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder="exemplo@email.com"
                   disabled={submitting}
@@ -431,7 +431,7 @@ export default function Usuarios() {
                   type="password"
                   id="senha"
                   value={form.senha}
-                  onChange={(e) => setForm({ ...form, senha: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, senha: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   placeholder={editando ? '••••••••' : 'Mínimo 6 caracteres'}
                   disabled={submitting}
@@ -446,7 +446,7 @@ export default function Usuarios() {
                 <select
                   id="tipo"
                   value={form.tipo}
-                  onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, tipo: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   disabled={submitting}
                   required
@@ -472,12 +472,12 @@ export default function Usuarios() {
                 <select
                   id="unidadeId"
                   value={form.unidadeId}
-                  onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, unidadeId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                   disabled={submitting || loadingUnidades}
                 >
                   <option value="">Nenhuma</option>
-                  {unidades.map((u) => (
+                  {unidades.map((u: UnidadeExecutanteOption) => (
                     <option key={u.id} value={u.id}>
                       {u.cnes} - {u.nome}
                     </option>
@@ -494,12 +494,12 @@ export default function Usuarios() {
                   <select
                     id="unidadeExecutanteId"
                     value={form.unidadeExecutanteId}
-                    onChange={(e) => setForm({ ...form, unidadeExecutanteId: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setForm({ ...form, unidadeExecutanteId: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                     disabled={submitting || loadingUnidades}
                   >
                     <option value="">Nenhuma (só vê agendamentos atribuídos a ele)</option>
-                    {unidadesExecutantes.map((u) => (
+                    {unidadesExecutantes.map((u: UnidadeExecutanteOption) => (
                       <option key={u.id} value={u.id}>
                         {u.cnes} - {u.nome}
                       </option>

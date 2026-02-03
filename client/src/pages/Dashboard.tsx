@@ -384,9 +384,9 @@ export default function Dashboard() {
               <h3 className="text-xs font-medium text-purple-900 mb-1">APACs Pendentes de Registro</h3>
               <p className="text-lg font-bold text-purple-700">{notificacoesAutorizador.totalApacsPendentes}</p>
               <p className="text-[10px] text-purple-600">Solicitações em andamento sem número APAC</p>
-              {notificacoesDirca.apacsPendentes.length > 0 && (
+              {notificacoesAutorizador.apacsPendentes.length > 0 && (
                 <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-                  {notificacoesDirca.apacsPendentes.slice(0, 5).map((s: any) => (
+                  {notificacoesAutorizador.apacsPendentes.slice(0, 5).map((s: any) => (
                     <Link
                       key={s.id}
                       to={`/solicitacoes/${s.id}`}

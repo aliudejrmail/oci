@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { Search, Plus, Edit, Trash2, X, Save, Building2 } from 'lucide-react'
 
@@ -162,13 +162,13 @@ export default function UnidadesExecutantes() {
               type="text"
               placeholder="Buscar por CNES ou nome..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
             value={filtroAtivo === null ? 'todos' : filtroAtivo ? 'ativos' : 'inativos'}
-            onChange={(e) => setFiltroAtivo(e.target.value === 'todos' ? null : e.target.value === 'ativos')}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFiltroAtivo(e.target.value === 'todos' ? null : e.target.value === 'ativos')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             <option value="todos">Todos</option>
@@ -197,7 +197,7 @@ export default function UnidadesExecutantes() {
                   </td>
                 </tr>
               ) : (
-                unidades.map((u) => (
+                unidades.map((u: UnidadeExecutante) => (
                   <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.cnes}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{u.nome}</td>
