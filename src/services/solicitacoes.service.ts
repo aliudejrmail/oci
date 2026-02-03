@@ -5,7 +5,6 @@ import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
   obrigatoriosSatisfeitos,
-  isProcedimentoConsultaOuTeleconsulta,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
@@ -716,8 +715,10 @@ export class SolicitacoesService {
       include: { solicitacao: true, procedimento: true }
     });
 
-    // Regra consulta/teleconsulta: ao marcar um como EXECUTADO, os outros do grupo ficam DISPENSADO no banco
-    if (data.status === 'EXECUTADO' && isProcedimentoConsultaOuTeleconsulta(execucao.procedimento.nome)) {
+    // Regra consulta/teleconsulta especializada: ao marcar um como EXECUTADO, os outros do grupo ficam DISPENSADO no banco
+    const vaiParaExecutado = (data.status === 'EXECUTADO' || dataAtualizacao?.status === 'EXECUTADO')
+    const ehConsultaOuTeleconsultaEspecializada = isConsultaMedicaEspecializada(execucao.procedimento.nome)
+    if (vaiParaExecutado && ehConsultaOuTeleconsultaEspecializada) {
       const outrasExecucoes = await this.prisma.execucaoProcedimento.findMany({
         where: {
           solicitacaoId: execucao.solicitacaoId,
@@ -727,7 +728,7 @@ export class SolicitacoesService {
         include: { procedimento: true }
       });
       const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) =>
-        isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome)
+        isConsultaMedicaEspecializada(e.procedimento.nome)
       );
       if (outrasConsultaTeleconsulta.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
@@ -738,13 +739,15 @@ export class SolicitacoesService {
     }
 
     // Reverter DISPENSADO para PENDENTE quando o EXECUTADO do grupo é desfeito
-    if (data.status === 'PENDENTE' && data.dataExecucao === null && isProcedimentoConsultaOuTeleconsulta(execucao.procedimento.nome)) {
+    const vaiParaPendente = (data.status === 'PENDENTE' || dataAtualizacao?.status === 'PENDENTE') &&
+      (data.dataExecucao === null || data.dataExecucao === undefined || dataAtualizacao?.dataExecucao === null)
+    if (vaiParaPendente && ehConsultaOuTeleconsultaEspecializada) {
       const dispensadas = await this.prisma.execucaoProcedimento.findMany({
         where: { solicitacaoId: execucao.solicitacaoId, status: 'DISPENSADO' },
         include: { procedimento: true }
       });
       const idsReverter = dispensadas
-        .filter((e) => isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome))
+        .filter((e) => isConsultaMedicaEspecializada(e.procedimento.nome))
         .map((e) => e.id);
       if (idsReverter.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
