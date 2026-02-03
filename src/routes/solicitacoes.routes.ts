@@ -38,6 +38,7 @@ router.delete('/:id', requireRole('ADMIN'), (req, res) => controller.excluir(req
 router.patch('/:id/status', (req, res) => controller.atualizarStatus(req as any, res));
 router.patch('/execucoes/:id', (req, res) => controller.atualizarExecucao(req, res));
 router.post('/verificar-prazos', requireRole('ADMIN'), (req, res) => controller.verificarPrazos(req, res));
+router.post('/corrigir-status-execucao', requireRole('ADMIN'), (req, res) => controller.corrigirStatusExecucao(req as any, res));
 router.post('/:id/atualizar-alerta', requireRole('ADMIN'), async (req, res) => {
   try {
     const service = new SolicitacoesService(prisma);

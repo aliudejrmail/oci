@@ -239,6 +239,31 @@ export class SolicitacoesController {
     }
   }
 
+  async corrigirStatusExecucao(_req: AuthRequest, res: Response) {
+    try {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO "status_execucao" ("codigo", "descricao")
+        VALUES ('REALIZADO', 'Realizado')
+        ON CONFLICT ("codigo") DO NOTHING
+      `)
+      const updated = await prisma.$executeRawUnsafe(`
+        UPDATE "execucoes_procedimentos" SET "status" = 'REALIZADO' WHERE "status" = 'EXECUTADO'
+      `)
+      await prisma.$executeRawUnsafe(`DELETE FROM "status_execucao" WHERE "codigo" = 'EXECUTADO'`)
+      const statuses = await prisma.$queryRawUnsafe<{ codigo: string }[]>(
+        `SELECT "codigo" FROM "status_execucao" ORDER BY "codigo"`
+      )
+      return res.json({
+        message: 'Correção aplicada com sucesso',
+        execucoesAtualizadas: updated,
+        statusAtuais: statuses.map((s) => s.codigo)
+      })
+    } catch (error: any) {
+      console.error('[corrigirStatusExecucao]', error?.message)
+      return res.status(500).json({ message: error?.message || 'Erro ao corrigir status' })
+    }
+  }
+
   async verificarPrazos(_req: Request, res: Response) {
     try {
       const service = this.getService();
