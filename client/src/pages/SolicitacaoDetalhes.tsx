@@ -538,7 +538,10 @@ export default function SolicitacaoDetalhes() {
                         </button>
                       )}
                       <button
-                        onClick={() => setModalProcedimentosAberto(true)}
+                        onClick={async () => {
+                          await carregarSolicitacao()
+                          setModalProcedimentosAberto(true)
+                        }}
                         className="px-2.5 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 flex items-center gap-1.5"
                       >
                         <CheckCircle size={14} />
@@ -763,6 +766,7 @@ export default function SolicitacaoDetalhes() {
       {/* Modal de Registro de Procedimentos - Executante vê apenas os agendados */}
       {id && solicitacao?.execucoes && (
         <RegistroProcedimentosModal
+          key={`modal-proc-${id}-${solicitacao.execucoes.map((e: any) => `${e.id}:${e.status}`).join(',')}`}
           open={modalProcedimentosAberto}
           onClose={() => setModalProcedimentosAberto(false)}
           onSuccess={() => {
