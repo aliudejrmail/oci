@@ -58,6 +58,7 @@ export default function SolicitacaoDetalhes() {
   const [excluindo, setExcluindo] = useState(false)
   const [modalAutorizacaoAberto, setModalAutorizacaoAberto] = useState(false)
   const [modalProcedimentosAberto, setModalProcedimentosAberto] = useState(false)
+  const [execucoesParaModal, setExecucoesParaModal] = useState<any[] | null>(null)
   const [modalAgendarAberto, setModalAgendarAberto] = useState(false)
   const [modalEditarAberto, setModalEditarAberto] = useState(false)
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false)
@@ -73,7 +74,7 @@ export default function SolicitacaoDetalhes() {
   const carregarSolicitacao = async () => {
     if (!id) {
       setLoading(false)
-      return
+      return null
     }
     try {
       const response = await api.get(`/solicitacoes/${id}`)
@@ -81,12 +82,14 @@ export default function SolicitacaoDetalhes() {
       // Só aceitar como solicitação válida se tiver id/numeroProtocolo e dados mínimos (evita tela em branco por resposta inesperada)
       if (data && (data.id || data.numeroProtocolo) && (data.paciente || data.oci)) {
         setSolicitacao(data)
-      } else {
-        setSolicitacao(null)
+        return data
       }
+      setSolicitacao(null)
+      return null
     } catch (error) {
       console.error('Erro ao carregar solicitação:', error)
       setSolicitacao(null)
+      return null
     } finally {
       setLoading(false)
     }
@@ -100,7 +103,8 @@ export default function SolicitacaoDetalhes() {
       }
       await api.patch(`/solicitacoes/${id}/status`, body)
       if (novoStatus === 'EM_ANDAMENTO') {
-        await carregarSolicitacao()
+        const data = await carregarSolicitacao()
+        setExecucoesParaModal(data?.execucoes ?? null)
         setModalProcedimentosAberto(true)
       } else if (novoStatus === 'CANCELADA') {
         setModalCancelarAberto(false)
@@ -540,7 +544,8 @@ export default function SolicitacaoDetalhes() {
                       )}
                       <button
                         onClick={async () => {
-                          await carregarSolicitacao()
+                          const data = await carregarSolicitacao()
+                          setExecucoesParaModal(data?.execucoes ?? null)
                           setModalProcedimentosAberto(true)
                         }}
                         className="px-2.5 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 flex items-center gap-1.5"
@@ -769,10 +774,14 @@ export default function SolicitacaoDetalhes() {
         <RegistroProcedimentosModal
           key={`modal-proc-${id}-${solicitacao.execucoes.map((e: any) => `${e.id}:${e.status}`).join(',')}`}
           open={modalProcedimentosAberto}
-          onClose={() => setModalProcedimentosAberto(false)}
+          onClose={() => {
+            setModalProcedimentosAberto(false)
+            setExecucoesParaModal(null)
+          }}
           onSuccess={() => {
             carregarSolicitacao()
             setModalProcedimentosAberto(false)
+            setExecucoesParaModal(null)
           }}
           solicitacaoId={id}
           execucoes={
@@ -781,6 +790,7 @@ export default function SolicitacaoDetalhes() {
               : solicitacao.execucoes
           }
           execucoesCompletas={solicitacao.execucoes}
+          execucoesRecemCarregadas={execucoesParaModal}
         />
       )}
 

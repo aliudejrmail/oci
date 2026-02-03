@@ -46,6 +46,8 @@ interface RegistroProcedimentosModalProps {
   execucoes: ProcedimentoExecucao[]
   /** Lista completa de execuções (para cálculo de status DISPENSADO). Se não informada, usa execucoes. */
   execucoesCompletas?: ProcedimentoExecucao[]
+  /** Dados recém-carregados ao abrir (evita divergência com página de detalhes). */
+  execucoesRecemCarregadas?: ProcedimentoExecucao[] | null
 }
 
 export default function RegistroProcedimentosModal({
@@ -54,7 +56,8 @@ export default function RegistroProcedimentosModal({
   onSuccess,
   solicitacaoId,
   execucoes,
-  execucoesCompletas
+  execucoesCompletas,
+  execucoesRecemCarregadas
 }: RegistroProcedimentosModalProps) {
   const { usuario } = useAuth()
   /** Execuções vindas do fetch ao abrir (dados frescos) ou das props. */
@@ -62,20 +65,30 @@ export default function RegistroProcedimentosModal({
   const [carregandoExecucoes, setCarregandoExecucoes] = useState(false)
 
   useEffect(() => {
-    if (!open || !solicitacaoId) return
+    if (!open || !solicitacaoId) {
+      if (!open) setExecucoesFrescas(null)
+      return
+    }
     setCarregandoExecucoes(true)
+    setExecucoesFrescas(null)
     api
       .get(`/solicitacoes/${solicitacaoId}`)
       .then((res) => {
         const execs = res?.data?.execucoes ?? []
         setExecucoesFrescas(execs)
       })
-      .catch(() => setExecucoesFrescas(null))
+      .catch((err) => {
+        console.warn('[Modal] Erro ao buscar execuções, usando dados do parent:', err?.response?.status)
+        setExecucoesFrescas(null)
+      })
       .finally(() => setCarregandoExecucoes(false))
   }, [open, solicitacaoId])
 
-  /** Usar dados frescos do fetch quando disponíveis; senão fallback para props. */
-  const execucoesCompletasParaModal = execucoesFrescas ?? (execucoesCompletas && execucoesCompletas.length > 0 ? execucoesCompletas : execucoes)
+  /** Prioridade: fetch do modal > dados recém-carregados do parent > props. */
+  const execucoesCompletasParaModal =
+    execucoesFrescas ??
+    (execucoesRecemCarregadas && execucoesRecemCarregadas.length > 0 ? execucoesRecemCarregadas : null) ??
+    (execucoesCompletas?.length ? execucoesCompletas : execucoes)
   /** Para EXECUTANTE: exibir só AGENDADO; demais perfis: todos. */
   const execucoesParaModal =
     usuario?.tipo === 'EXECUTANTE'
