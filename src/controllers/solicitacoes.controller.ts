@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { STATUS_EXECUCAO } from '../constants/status-execucao';
 import path from 'path';
 import fs from 'fs';
 import { SolicitacoesService } from '../services/solicitacoes.service';
@@ -121,7 +122,7 @@ export class SolicitacoesController {
         if (usuario?.unidadeExecutanteId && usuario.unidadeExecutante) {
           const unidadeLabel = `${usuario.unidadeExecutante.cnes} - ${usuario.unidadeExecutante.nome}`;
           const temPorUnidade = solicitacao.execucoes?.some(
-            (e: any) => e.status === 'AGENDADO' && e.unidadeExecutora === unidadeLabel
+            (e: any) => e.status === STATUS_EXECUCAO.AGENDADO && e.unidadeExecutora === unidadeLabel
           );
           if (temPorUnidade) {
             return res.json(solicitacao);

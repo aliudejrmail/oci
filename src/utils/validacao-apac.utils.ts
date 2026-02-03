@@ -1,3 +1,5 @@
+import { STATUS_EXECUCAO } from '../constants/status-execucao';
+
 /**
  * Valida o formato do número de autorização APAC conforme manual PMAE/OCI
  * Portaria SAES/MS nº 1640/2024, Art. 12: "As APACs para registro das OCIs deverão ser registradas 
@@ -114,7 +116,7 @@ export function validarProcedimentosObrigatoriosOci(
   procedimentosObrigatorios: ProcedimentoObrigatorio[],
   execucoes: ExecucaoParaValidacao[]
 ): { valido: boolean; erro?: string } {
-  const execucoesRealizadas = execucoes.filter((e) => e.status === 'EXECUTADO');
+  const execucoesRealizadas = execucoes.filter((e) => e.status === STATUS_EXECUCAO.REALIZADO);
   const idsExecutados = new Set(execucoesRealizadas.map((e) => e.procedimento.id));
 
   const grupoConsulta = procedimentosObrigatorios.filter((p) =>
@@ -174,7 +176,7 @@ export function obrigatoriosSatisfeitos(
 export function validarProcedimentosSecundariosObrigatorios(
   execucoes: Array<{ status: string; procedimento: { codigo: string } }>
 ): { valido: boolean; erro?: string } {
-  const execucoesRealizadas = execucoes.filter((e) => e.status === 'EXECUTADO');
+  const execucoesRealizadas = execucoes.filter((e) => e.status === STATUS_EXECUCAO.REALIZADO);
 
   if (execucoesRealizadas.length < 2) {
     return {

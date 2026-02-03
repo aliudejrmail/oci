@@ -56,7 +56,7 @@ export default function RegistroProcedimentosModal({
   execucoes,
   execucoesCompletas
 }: RegistroProcedimentosModalProps) {
-  /** Lista completa para validação e status. Sempre usar quando disponível para incluir EXECUTADO mesmo com execucoes filtrada. */
+  /** Lista completa para validação e status. Sempre usar quando disponível para incluir REALIZADO mesmo com execucoes filtrada. */
   const execucoesParaStatus = execucoesCompletas && execucoesCompletas.length > 0 ? execucoesCompletas : execucoes
   const { usuario } = useAuth()
   const isAdmin = usuario?.tipo === 'ADMIN'
@@ -67,7 +67,7 @@ export default function RegistroProcedimentosModal({
     codigo: string
     tipo: string
     realizado: boolean
-    /** Status da execução no backend: PENDENTE, AGENDADO, EXECUTADO, CANCELADO */
+    /** Status da execução no backend: PENDENTE, AGENDADO, REALIZADO, CANCELADO */
     status: string
     /** Data do agendamento (YYYY-MM-DD), quando status foi AGENDADO; usada para restringir a data de execução */
     dataAgendamento: string
@@ -96,7 +96,7 @@ export default function RegistroProcedimentosModal({
   useEffect(() => {
     if (!open) return
 
-    // Usar lista completa para ter todos os procedimentos (inclui EXECUTADO para consultaJaRealizada)
+    // Usar lista completa para ter todos os procedimentos (inclui REALIZADO para consultaJaRealizada)
     const execucoesParaInicializar = execucoesParaStatus
     const idsExecucoesExibir = new Set(execucoes.map((e) => e.id))
     const procedimentosInicializados = execucoesParaInicializar
@@ -124,7 +124,7 @@ export default function RegistroProcedimentosModal({
         nome: exec.procedimento.nome,
         codigo: exec.procedimento.codigo,
         tipo: exec.procedimento.tipo,
-        realizado: exec.status === 'EXECUTADO',
+        realizado: exec.status === 'REALIZADO',
         status: exec.status || 'PENDENTE',
         dataAgendamento: dataAgendamentoStr,
         dataExecucao: exec.dataExecucao
@@ -147,7 +147,7 @@ export default function RegistroProcedimentosModal({
   /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa + fallback nos procedimentos do form. */
   const consultaJaRealizada =
     execucoesParaStatus.some(
-      (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
+      (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'REALIZADO'
     ) || procedimentos.some((p) => p.ehConsultaEspecializada && p.realizado)
 
   const handleToggleRealizado = (index: number) => {
@@ -276,7 +276,7 @@ export default function RegistroProcedimentosModal({
     const procedimentosRealizados = procedimentos.filter(p => p.realizado)
     const consultaJaRealizadaSubmit =
       execucoesParaStatus.some(
-        (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
+        (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'REALIZADO'
       ) || procedimentosRealizados.some((p) => p.ehConsultaEspecializada)
     const outrosRealizadosSemConsulta = procedimentosRealizados.some((p) => !p.ehConsultaEspecializada) && !consultaJaRealizadaSubmit
     if (outrosRealizadosSemConsulta) {
@@ -352,7 +352,7 @@ export default function RegistroProcedimentosModal({
         const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0)
 
         const payload: Record<string, unknown> = {
-          status: 'EXECUTADO',
+          status: 'REALIZADO',
           dataExecucao: dataLocal.toISOString()
         }
         if (proc.ehBiopsia && (proc.resultadoBiopsia ?? '').trim()) {
@@ -376,9 +376,9 @@ export default function RegistroProcedimentosModal({
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
 
-      // Também atualizar procedimentos que foram desmarcados (se estavam como EXECUTADO)
+      // Também atualizar procedimentos que foram desmarcados (se estavam como REALIZADO)
       const procedimentosDesmarcados = procedimentos.filter(
-        p => !p.realizado && execucoes.find(e => e.id === p.execucaoId)?.status === 'EXECUTADO'
+        p => !p.realizado && execucoes.find(e => e.id === p.execucaoId)?.status === 'REALIZADO'
       )
 
       const promisesDesmarcar = procedimentosDesmarcados.map(proc =>
@@ -634,7 +634,7 @@ export default function RegistroProcedimentosModal({
                     {(() => {
                       const execucao = execucoesParaStatus.find((e) => e.id === proc.execucaoId)
                       const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
-                      if (statusExibicao === 'EXECUTADO' || proc.realizado) {
+                      if (statusExibicao === 'REALIZADO' || proc.realizado) {
                         return (
                           <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-0.5">
                             <CheckCircle size={10} />

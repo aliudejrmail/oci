@@ -1,6 +1,6 @@
 /**
  * Script para corrigir registros existentes no banco:
- * Quando uma consulta/teleconsulta está EXECUTADO e outra está PENDENTE/AGENDADO,
+ * Quando uma consulta/teleconsulta está REALIZADO e outra está PENDENTE/AGENDADO,
  * atualiza a PENDENTE/AGENDADO para DISPENSADO.
  *
  * Execute: npm run corrigir:dispensado
@@ -8,6 +8,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { STATUS_EXECUCAO } from '../src/constants/status-execucao';
 
 function isProcedimentoConsultaOuTeleconsulta(nome: string): boolean {
   const n = (nome || '')
@@ -43,13 +44,13 @@ async function main() {
     const outroConsultaExecutado = outrasExecucoes.some(
       (e) =>
         isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome) &&
-        e.status === 'EXECUTADO'
+        e.status === STATUS_EXECUCAO.REALIZADO
     );
 
     if (outroConsultaExecutado) {
       await prisma.execucaoProcedimento.update({
         where: { id: exec.id },
-        data: { status: 'DISPENSADO' }
+        data: { status: STATUS_EXECUCAO.DISPENSADO }
       });
       atualizados++;
       console.log(

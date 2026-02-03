@@ -694,7 +694,7 @@ export default function SolicitacaoDetalhes() {
                 <div className="text-right ml-2">
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-full flex items-center gap-1 ${
-                      statusExibicao === 'EXECUTADO'
+                      statusExibicao === 'REALIZADO'
                         ? 'bg-green-100 text-green-800'
                         : statusExibicao === 'DISPENSADO'
                         ? 'bg-slate-100 text-slate-600'
@@ -706,8 +706,8 @@ export default function SolicitacaoDetalhes() {
                     }`}
                     title={execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia ? 'Procedimento pendente por aguardo de resultado da biópsia' : statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
                   >
-                    {statusExibicao === 'EXECUTADO' && <CheckCircle size={10} />}
-                    {statusExibicao === 'EXECUTADO'
+                    {statusExibicao === 'REALIZADO' && <CheckCircle size={10} />}
+                    {statusExibicao === 'REALIZADO'
                       ? 'REALIZADO'
                       : statusExibicao === 'DISPENSADO'
                       ? 'DISPENSADO'
@@ -715,7 +715,7 @@ export default function SolicitacaoDetalhes() {
                       ? 'Pendente – aguardando resultado'
                       : execucao.status}
                   </span>
-                  {execucao.status === 'EXECUTADO' && execucao.dataExecucao && (
+                  {execucao.status === 'REALIZADO' && execucao.dataExecucao && (
                     <p className="text-xs text-gray-600 mt-0.5 font-medium">
                       {formatarDataSemTimezone(execucao.dataExecucao)}
                     </p>
@@ -726,7 +726,7 @@ export default function SolicitacaoDetalhes() {
                       {execucao.unidadeExecutora && ` • ${execucao.unidadeExecutora}`}
                     </p>
                   )}
-                  {execucao.dataColetaMaterialBiopsia && execucao.status !== 'EXECUTADO' && (
+                  {execucao.dataColetaMaterialBiopsia && execucao.status !== 'REALIZADO' && (
                     <p className="text-[10px] text-gray-500 mt-0.5">
                       Coleta: {formatarDataSemTimezone(execucao.dataColetaMaterialBiopsia)}
                     </p>

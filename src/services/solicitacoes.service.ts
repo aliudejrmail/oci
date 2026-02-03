@@ -1,4 +1,5 @@
 import { PrismaClient, StatusSolicitacao, TipoOci } from '@prisma/client';
+import { STATUS_EXECUCAO } from '../constants/status-execucao';
 import { calcularDataPrazo, calcularDiasRestantes, competenciaDeData, competenciaDeDataUTC, determinarNivelAlerta, proximaCompetencia, calcularDecimoDiaUtilMesSeguinte, dataFimCompetencia, dataLimiteRegistroOncologico } from '../utils/date.utils';
 import { gerarNumeroProtocolo } from '../utils/gerador-protocolo.utils';
 import {
@@ -9,7 +10,7 @@ import {
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
 
-/** Procedimentos de biópsia só podem ser EXECUTADO após registro do resultado (nome contém "biópsia" ou "biopsia"). */
+/** Procedimentos de biópsia só podem ser REALIZADO após registro do resultado (nome contém "biópsia" ou "biopsia"). */
 function isProcedimentoBiopsia(nome: string): boolean {
   const n = (nome || '')
     .toLowerCase()
@@ -99,7 +100,7 @@ export class SolicitacoesService {
         data: procedimentosSigtap.map((proc) => ({
           solicitacaoId: solicitacao.id,
           procedimentoId: proc.id,
-          status: 'PENDENTE'
+          status: STATUS_EXECUCAO.PENDENTE
         }))
       });
     }
@@ -212,7 +213,7 @@ export class SolicitacoesService {
     // Se estiver alterando a OCI, verificar se nenhum procedimento foi registrado
     if (data.ociId && data.ociId !== solicitacaoAtual.ociId) {
       const algumRegistrado = solicitacaoAtual.execucoes.some(
-        (e) => e.status !== 'PENDENTE' || e.dataExecucao != null
+        (e) => e.status !== STATUS_EXECUCAO.PENDENTE || e.dataExecucao != null
       );
       if (algumRegistrado) {
         throw new Error(
@@ -263,7 +264,7 @@ export class SolicitacoesService {
         data: procedimentosSigtap.map((proc) => ({
           solicitacaoId: id,
           procedimentoId: proc.id,
-          status: 'PENDENTE'
+          status: STATUS_EXECUCAO.PENDENTE
         }))
       });
 
@@ -327,14 +328,14 @@ export class SolicitacoesService {
         });
         if (usuarioExecutante?.unidadeExecutanteId && usuarioExecutante.unidadeExecutante) {
           const u = usuarioExecutante.unidadeExecutante;
-          execucoesFilter.status = 'AGENDADO';
+          execucoesFilter.status = STATUS_EXECUCAO.AGENDADO;
           execucoesFilter.unidadeExecutora = `${u.cnes} - ${u.nome}`;
         } else {
           execucoesFilter.executanteId = filtros.executanteId;
         }
       }
       if (filtros.unidadeExecutora && filtros.unidadeExecutora.trim()) {
-        execucoesFilter.status = 'AGENDADO';
+        execucoesFilter.status = STATUS_EXECUCAO.AGENDADO;
         execucoesFilter.unidadeExecutora = filtros.unidadeExecutora.trim();
       }
       if (Object.keys(execucoesFilter).length > 0) {
@@ -611,7 +612,7 @@ export class SolicitacoesService {
     }
 
     const ehBiopsia = isProcedimentoBiopsia(execucaoAtual.procedimento.nome);
-    if (data.status === 'EXECUTADO' && ehBiopsia) {
+    if (data.status === STATUS_EXECUCAO.REALIZADO && ehBiopsia) {
       const resultadoInformado = (data.resultadoBiopsia ?? '').toString().trim();
       const jaTinhaResultado = Boolean(execucaoAtual.resultadoBiopsia?.trim());
       if (!resultadoInformado && !jaTinhaResultado) {
@@ -623,7 +624,7 @@ export class SolicitacoesService {
 
     // Só permitir marcar outros procedimentos como EXECUTADO se a consulta médica especializada já tiver sido realizada
     const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
-    if (data.status === 'EXECUTADO' && !ehConsultaEspecializada) {
+    if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
       const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findUnique({
         where: { id: execucaoAtual.solicitacaoId },
         include: {
@@ -637,7 +638,7 @@ export class SolicitacoesService {
           (e) =>
             e.id !== id &&
             isConsultaMedicaEspecializada(e.procedimento.nome) &&
-            e.status === 'EXECUTADO' &&
+            e.status === STATUS_EXECUCAO.REALIZADO &&
             e.dataExecucao != null
         );
         if (!consultaJaRealizada) {
@@ -704,7 +705,7 @@ export class SolicitacoesService {
         dataAtualizacao.dataRegistroResultadoBiopsia = null;
       }
     }
-    if (data.status === 'EXECUTADO' && ehBiopsia && dataAtualizacao.resultadoBiopsia && !dataAtualizacao.dataRegistroResultadoBiopsia) {
+    if (data.status === STATUS_EXECUCAO.REALIZADO && ehBiopsia && dataAtualizacao.resultadoBiopsia && !dataAtualizacao.dataRegistroResultadoBiopsia) {
       dataAtualizacao.dataRegistroResultadoBiopsia = new Date();
     }
     
@@ -715,15 +716,15 @@ export class SolicitacoesService {
       include: { solicitacao: true, procedimento: true }
     });
 
-    // Regra consulta/teleconsulta especializada: ao marcar um como EXECUTADO, os outros do grupo ficam DISPENSADO no banco
-    const vaiParaExecutado = (data.status === 'EXECUTADO' || dataAtualizacao?.status === 'EXECUTADO')
+    // Regra consulta/teleconsulta especializada: ao marcar um como REALIZADO, os outros do grupo ficam DISPENSADO no banco
+    const vaiParaExecutado = (data.status === STATUS_EXECUCAO.REALIZADO || dataAtualizacao?.status === STATUS_EXECUCAO.REALIZADO)
     const ehConsultaOuTeleconsultaEspecializada = isConsultaMedicaEspecializada(execucao.procedimento.nome)
     if (vaiParaExecutado && ehConsultaOuTeleconsultaEspecializada) {
       const outrasExecucoes = await this.prisma.execucaoProcedimento.findMany({
         where: {
           solicitacaoId: execucao.solicitacaoId,
           id: { not: id },
-          status: { in: ['PENDENTE', 'AGENDADO'] }
+          status: { in: [STATUS_EXECUCAO.PENDENTE, STATUS_EXECUCAO.AGENDADO] }
         },
         include: { procedimento: true }
       });
@@ -733,17 +734,17 @@ export class SolicitacoesService {
       if (outrasConsultaTeleconsulta.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
           where: { id: { in: outrasConsultaTeleconsulta.map((e) => e.id) } },
-          data: { status: 'DISPENSADO' }
+          data: { status: STATUS_EXECUCAO.DISPENSADO }
         });
       }
     }
 
-    // Reverter DISPENSADO para PENDENTE quando o EXECUTADO do grupo é desfeito
-    const vaiParaPendente = (data.status === 'PENDENTE' || dataAtualizacao?.status === 'PENDENTE') &&
+    // Reverter DISPENSADO para PENDENTE quando o REALIZADO do grupo é desfeito
+    const vaiParaPendente = (data.status === STATUS_EXECUCAO.PENDENTE || dataAtualizacao?.status === STATUS_EXECUCAO.PENDENTE) &&
       (data.dataExecucao === null || data.dataExecucao === undefined || dataAtualizacao?.dataExecucao === null)
     if (vaiParaPendente && ehConsultaOuTeleconsultaEspecializada) {
       const dispensadas = await this.prisma.execucaoProcedimento.findMany({
-        where: { solicitacaoId: execucao.solicitacaoId, status: 'DISPENSADO' },
+        where: { solicitacaoId: execucao.solicitacaoId, status: STATUS_EXECUCAO.DISPENSADO },
         include: { procedimento: true }
       });
       const idsReverter = dispensadas
@@ -752,7 +753,7 @@ export class SolicitacoesService {
       if (idsReverter.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
           where: { id: { in: idsReverter } },
-          data: { status: 'PENDENTE' }
+          data: { status: STATUS_EXECUCAO.PENDENTE }
         });
       }
     }
@@ -766,10 +767,10 @@ export class SolicitacoesService {
     });
     if (!sol) return execucao;
 
-    // Buscar todas as execuções executadas (status EXECUTADO e com dataExecucao não nula)
+    // Buscar todas as execuções executadas (status REALIZADO e com dataExecucao não nula)
     // Após a atualização acima, a execução já está com o status e data corretos no banco
     const execucoesComData = sol.execucoes.filter(
-      (e) => e.status === 'EXECUTADO' && e.dataExecucao != null
+      (e) => e.status === STATUS_EXECUCAO.REALIZADO && e.dataExecucao != null
     );
 
     const atualizar: { 
@@ -896,7 +897,7 @@ export class SolicitacoesService {
         obrigatoriosOk = obrigatoriosSatisfeitos(procedimentosObrigatorios, execucoesComProcedimento);
       } else {
         // Fallback: sem obrigatórios na OCI, considerar concluída quando todos executados
-        obrigatoriosOk = sol.execucoes.every((e) => e.status === 'EXECUTADO');
+        obrigatoriosOk = sol.execucoes.every((e) => e.status === STATUS_EXECUCAO.REALIZADO);
       }
 
       if (obrigatoriosOk && sol.status !== StatusSolicitacao.CONCLUIDA) {
@@ -976,7 +977,7 @@ export class SolicitacoesService {
 
     // Verificar se há procedimentos executados
     const procedimentosExecutados = solicitacao.execucoes.filter(
-      execucao => execucao.status === 'EXECUTADO' && execucao.dataExecucao !== null
+      execucao => execucao.status === STATUS_EXECUCAO.REALIZADO && execucao.dataExecucao !== null
     );
 
     if (procedimentosExecutados.length > 0) {

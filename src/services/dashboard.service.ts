@@ -1,4 +1,5 @@
 import { PrismaClient, StatusSolicitacao } from '@prisma/client';
+import { STATUS_EXECUCAO } from '../constants/status-execucao';
 import { dataFimCompetencia, dataLimiteRegistroOncologico, calcularDecimoDiaUtilMesSeguinte, calcularDiasRestantes, determinarNivelAlerta, calcularPrazoResultadoBiopsia, calcularPrazoResultadoBiopsiaOncologico } from '../utils/date.utils';
 
 export class DashboardService {
@@ -228,7 +229,7 @@ export class DashboardService {
             { resultadoBiopsia: null },
             { resultadoBiopsia: '' }
           ],
-          status: { not: 'EXECUTADO' },
+          status: { not: STATUS_EXECUCAO.REALIZADO },
           solicitacao: {
             status: {
               notIn: [StatusSolicitacao.CONCLUIDA, StatusSolicitacao.CANCELADA]
@@ -477,7 +478,7 @@ export class DashboardService {
           },
           execucoes: {
             where: {
-              status: 'EXECUTADO',
+              status: STATUS_EXECUCAO.REALIZADO,
               dataExecucao: { not: null }
             },
             select: {

@@ -52,8 +52,8 @@ export default function AgendarModal({
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
 
-  // Apenas execuções que podem ser agendadas (PENDENTE ou AGENDADO; não EXECUTADO)
-  const execucoesAgendaveis = execucoes.filter((e) => e.status !== 'EXECUTADO')
+  // Apenas execuções que podem ser agendadas (PENDENTE ou AGENDADO; não REALIZADO)
+  const execucoesAgendaveis = execucoes.filter((e) => e.status !== 'REALIZADO')
 
   const reagendamentoUnidadeFixa = Boolean(tituloReagendamento && unidadeExecutoraPreenchida)
 

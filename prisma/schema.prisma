@@ -299,18 +299,26 @@ model AnexoSolicitacao {
   @@map("anexos_solicitacoes")
 }
 
+model StatusExecucao {
+  codigo    String   @id
+  descricao String?
+  execucoes ExecucaoProcedimento[]
+
+  @@map("status_execucao")
+}
+
 model ExecucaoProcedimento {
   id                         String    @id @default(uuid())
   solicitacaoId              String
   procedimentoId             String
   dataAgendamento            DateTime?
   dataExecucao               DateTime?
-  status                     String   // PENDENTE, AGENDADO, EXECUTADO, CANCELADO, DISPENSADO
+  status                     String   // FK: PENDENTE, AGENDADO, REALIZADO, CANCELADO, DISPENSADO
   observacoes                String?
   profissional               String?  // Nome do profissional que executou
   unidadeExecutora           String?
   executanteId               String?  // Usuário executante (tipo EXECUTANTE) para quem foi agendado
-  // Biópsia: só pode ser EXECUTADO após registro do resultado
+  // Biópsia: só pode ser REALIZADO após registro do resultado
   resultadoBiopsia           String?
   dataColetaMaterialBiopsia  DateTime?
   dataRegistroResultadoBiopsia DateTime?
@@ -320,6 +328,7 @@ model ExecucaoProcedimento {
   solicitacao  SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
   procedimento ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
   executante   Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
+  statusExecucao StatusExecucao @relation(fields: [status], references: [codigo], onDelete: Restrict)
 
   @@index([solicitacaoId])
   @@index([status])

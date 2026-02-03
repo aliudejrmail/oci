@@ -21,14 +21,14 @@ export function isProcedimentoConsultaOuTeleconsulta(nome: string): boolean {
 
 /**
  * Retorna o status para exibição na UI.
- * Quando um procedimento consulta/teleconsulta está EXECUTADO e outro do mesmo grupo
+ * Quando um procedimento consulta/teleconsulta está REALIZADO e outro do mesmo grupo
  * está PENDENTE ou AGENDADO, o não executado exibe como DISPENSADO.
  */
 export function getStatusExibicao(
   execucao: ExecucaoParaDisplay,
   todasExecucoes: ExecucaoParaDisplay[]
 ): string {
-  if (execucao.status === 'EXECUTADO' || execucao.status === 'CANCELADO' || execucao.status === 'DISPENSADO') {
+  if (execucao.status === 'REALIZADO' || execucao.status === 'CANCELADO' || execucao.status === 'DISPENSADO') {
     return execucao.status
   }
 
@@ -37,7 +37,7 @@ export function getStatusExibicao(
       (e) =>
         e.id !== execucao.id &&
         isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome) &&
-        e.status === 'EXECUTADO'
+        e.status === 'REALIZADO'
     )
     if (outroNoGrupoExecutado) return 'DISPENSADO'
   }

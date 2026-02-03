@@ -1,4 +1,5 @@
 import { PrismaClient, StatusSolicitacao, TipoOci } from '@prisma/client';
+import { STATUS_EXECUCAO } from '../constants/status-execucao';
 
 export type FiltrosRelatorio = {
   dataInicio?: string; // YYYY-MM-DD
@@ -140,10 +141,10 @@ export class RelatoriosService {
     return grupos.map((g) => ({ tipo: g.tipo, quantidade: g._count }));
   }
 
-  /** Procedimentos executados no período (execuções com status EXECUTADO e dataExecucao no intervalo) */
+  /** Procedimentos executados no período (execuções com status REALIZADO e dataExecucao no intervalo) */
   async procedimentosExecutados(filtros: FiltrosRelatorio, limite = 500) {
     const whereExecucao: Record<string, unknown> = {
-      status: 'EXECUTADO',
+      status: STATUS_EXECUCAO.REALIZADO,
       dataExecucao: { not: null }
     };
     if (filtros.dataInicio || filtros.dataFim) {
