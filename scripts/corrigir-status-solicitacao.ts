@@ -56,7 +56,20 @@ async function main() {
     include: { procedimento: true }
   })
 
-  // 3. Consulta/teleconsulta especializada: se uma é REALIZADO, outra PENDENTE/AGENDADO -> DISPENSADO
+  // 3. REALIZADO sem dataExecucao: preencher com data de referência
+  const dataReferencia = execucoesAtualizadas.find((e) => e.dataColetaMaterialBiopsia != null)?.dataColetaMaterialBiopsia ?? solicitacao.createdAt
+  for (const exec of execucoesAtualizadas) {
+    if (exec.status === STATUS_EXECUCAO.REALIZADO && exec.dataExecucao == null) {
+      await prisma.execucaoProcedimento.update({
+        where: { id: exec.id },
+        data: { dataExecucao: dataReferencia }
+      })
+      console.log(`  ✓ ${exec.procedimento.nome}: dataExecucao = ${dataReferencia.toISOString().split('T')[0]}`)
+      atualizados++
+    }
+  }
+
+  // 4. Consulta/teleconsulta especializada: se uma é REALIZADO, outra PENDENTE/AGENDADO -> DISPENSADO
   const consultasEspecializadas = execucoesAtualizadas.filter((e) =>
     isConsultaMedicaEspecializada(e.procedimento.nome)
   )

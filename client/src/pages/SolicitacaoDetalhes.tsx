@@ -716,9 +716,9 @@ export default function SolicitacaoDetalhes() {
                       ? 'Pendente – aguardando resultado'
                       : execucao.status}
                   </span>
-                  {execucao.status === 'REALIZADO' && execucao.dataExecucao && (
+                  {statusExibicao === 'REALIZADO' && (
                     <p className="text-xs text-gray-600 mt-0.5 font-medium">
-                      {formatarDataSemTimezone(execucao.dataExecucao)}
+                      {execucao.dataExecucao ? formatarDataSemTimezone(execucao.dataExecucao) : 'Data não informada'}
                     </p>
                   )}
                   {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
