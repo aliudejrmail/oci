@@ -1,0 +1,24 @@
+# Blueprint para deploy no Render - Sistema OCI SUS
+# Conecte o repositório no Render e configure as variáveis de ambiente no Dashboard.
+# DATABASE_URL e JWT_SECRET devem ser definidos manualmente (não commitar no repositório).
+
+services:
+  - type: web
+    runtime: node
+    name: sistema-oci-sus
+
+    buildCommand: npm install && npx prisma generate && npm run build
+    preDeployCommand: npx prisma migrate deploy
+    startCommand: npm start
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Defina no Dashboard do Render (Environment):
+      # - DATABASE_URL: URL do Neon (ex.: postgresql://user:pass@host/db?sslmode=require)
+      # - JWT_SECRET: string aleatória forte (ex.: openssl rand -base64 32)
+      # - CLIENT_URL: URL do app no Render (ex.: https://sistema-oci-sus.onrender.com) - opcional se servido no mesmo domínio

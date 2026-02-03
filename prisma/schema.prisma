@@ -1,0 +1,345 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoOci {
+  GERAL
+  ONCOLOGICO
+}
+
+enum StatusSolicitacao {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
+  VENCIDA
+}
+
+enum TipoProcedimento {
+  CONSULTA
+  EXAME
+  PROCEDIMENTO_CIRURGICO
+  TECNOLOGIA
+  OUTRO
+}
+
+model Usuario {
+  id                   String   @id @default(uuid())
+  nome                 String
+  email                String   @unique
+  senha                String
+  tipo                 String   // ADMIN, GESTOR, ATENDENTE, EXECUTANTE, AUTORIZADOR, SOLICITANTE
+  ativo                Boolean  @default(true)
+  unidadeId            String?  // Unidade de lotação/vinculação (qualquer perfil)
+  unidadeExecutanteId  String?  // Unidade onde o executante atua (só para tipo EXECUTANTE)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  solicitacoesCriadas     SolicitacaoOci[]     @relation("CriadoPor")
+  solicitacoesAtualizadas SolicitacaoOci[]     @relation("AtualizadoPor")
+  execucoesAgendadas     ExecucaoProcedimento[] @relation("Executante")
+  unidade                UnidadeSaude?         @relation("Unidade", fields: [unidadeId], references: [id], onDelete: SetNull)
+  unidadeExecutante      UnidadeSaude?         @relation("UnidadeExecutante", fields: [unidadeExecutanteId], references: [id], onDelete: SetNull)
+
+  @@index([unidadeId])
+  @@index([unidadeExecutanteId])
+  @@map("usuarios")
+}
+
+model Paciente {
+  id             String   @id @default(uuid())
+  nome           String
+  cpf            String   @unique
+  cns            String?  // Cartão Nacional de Saúde (alternativa ao CPF)
+  dataNascimento DateTime
+  sexo           String
+  responsavel    String?  // Quando menor de idade ou necessidade/condição de saúde
+  // Endereço
+  cep            String?
+  logradouro     String?  // Rua
+  numero         String?
+  bairro         String?
+  municipio      String   // Cidade
+  uf             String
+  telefone       String?
+  email          String?
+  endereco       String?  // Endereço completo (legado/fallback)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  solicitacoes SolicitacaoOci[]
+
+  @@index([nome])
+  @@index([cpf])
+  @@index([cns])
+  @@map("pacientes")
+}
+
+model UnidadeSaude {
+  id          String   @id @default(uuid())
+  cnes        String   @unique
+  nome        String
+  ativo       Boolean  @default(true)
+  executante  Int      @default(0) // 0 = não executante, 1 = executante (pode agendar procedimentos)
+  solicitante Int      @default(0) // 0 = não solicitante, 1 = solicitante (pode originar solicitações)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuarios           Usuario[] @relation("Unidade")           // Usuários vinculados à unidade (lotação)
+  usuariosExecutantes Usuario[] @relation("UnidadeExecutante") // Executantes que atuam nesta unidade
+
+  @@index([nome])
+  @@index([executante])
+  @@index([solicitante])
+  @@map("unidades_saude")
+}
+
+model Profissional {
+  id        String   @id @default(uuid())
+  nome      String
+  cns       String   @unique // Cartão Nacional de Saúde (15 dígitos)
+  cbo       String   // Código Brasileiro de Ocupação (ex: 2234-05)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([nome])
+  @@index([cns])
+  @@map("profissionais")
+}
+
+model Oci {
+  id              String   @id @default(uuid())
+  codigo          String   @unique
+  nome            String
+  descricao       String?
+  tipo            TipoOci
+  prazoMaximoDias Int // 60 para geral, 30 para oncológico
+  ativo           Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  solicitacoes  SolicitacaoOci[]
+  procedimentos ProcedimentoOci[]
+
+  @@map("ocis")
+}
+
+model ProcedimentoOci {
+  id           String           @id @default(uuid())
+  ociId        String
+  codigo       String
+  codigoSigtap String?          // Código do procedimento na Tabela SIGTAP (Tabela Unificada SUS)
+  nome         String
+  descricao    String?
+  tipo         TipoProcedimento
+  ordem        Int // Ordem de execução no fluxo
+  obrigatorio  Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  oci              Oci                    @relation(fields: [ociId], references: [id], onDelete: Cascade)
+  execucoes        ExecucaoProcedimento[]
+  compatibilidadeCid CompatibilidadeCid[]
+  compatibilidadeCbo CompatibilidadeCbo[]
+
+  @@map("procedimentos_oci")
+}
+
+// Catálogo de procedimentos da Tabela SIGTAP (importado de tb_procedimento)
+model ProcedimentoSigtap {
+  id               String   @id @default(uuid())
+  codigo           String   @unique // CO_PROCEDIMENTO 10 chars
+  nome             String   // NO_PROCEDIMENTO
+  tipoComplexidade String?  // TP_COMPLEXIDADE: 1=Baixa, 2=Média, 3=Alta
+  competencia      String?  // DT_COMPETENCIA YYYYMM
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  compatibilidadeCidSigtap CompatibilidadeCidSigtap[]
+  compatibilidadeCboSigtap CompatibilidadeCboSigtap[]
+
+  @@index([nome])
+  @@map("procedimentos_sigtap")
+}
+
+// Compatibilidade procedimento SIGTAP (OCI grupo 09) × CID
+model CompatibilidadeCidSigtap {
+  id                   String   @id @default(uuid())
+  procedimentoSigtapId String
+  cidCodigo            String
+  cidDescricao         String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  procedimentoSigtap ProcedimentoSigtap @relation(fields: [procedimentoSigtapId], references: [id], onDelete: Cascade)
+
+  @@unique([procedimentoSigtapId, cidCodigo])
+  @@index([cidCodigo])
+  @@map("compatibilidade_cid_sigtap")
+}
+
+// Compatibilidade procedimento SIGTAP (OCI grupo 09) × CBO
+model CompatibilidadeCboSigtap {
+  id                   String   @id @default(uuid())
+  procedimentoSigtapId String
+  cboCodigo            String
+  cboDescricao         String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  procedimentoSigtap ProcedimentoSigtap @relation(fields: [procedimentoSigtapId], references: [id], onDelete: Cascade)
+
+  @@unique([procedimentoSigtapId, cboCodigo])
+  @@index([cboCodigo])
+  @@map("compatibilidade_cbo_sigtap")
+}
+
+// Compatibilidade procedimento OCI × CID (SIGTAP rl_procedimento_cid)
+model CompatibilidadeCid {
+  id               String   @id @default(uuid())
+  procedimentoOciId String
+  cidCodigo        String   // Código CID-10
+  cidDescricao     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  procedimento ProcedimentoOci @relation(fields: [procedimentoOciId], references: [id], onDelete: Cascade)
+
+  @@unique([procedimentoOciId, cidCodigo])
+  @@index([cidCodigo])
+  @@map("compatibilidade_cid")
+}
+
+// Compatibilidade procedimento OCI × CBO (SIGTAP rl_procedimento_cbo)
+model CompatibilidadeCbo {
+  id               String   @id @default(uuid())
+  procedimentoOciId String
+  cboCodigo        String   // Código CBO (ex.: 2234-05)
+  cboDescricao     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  procedimento ProcedimentoOci @relation(fields: [procedimentoOciId], references: [id], onDelete: Cascade)
+
+  @@unique([procedimentoOciId, cboCodigo])
+  @@index([cboCodigo])
+  @@map("compatibilidade_cbo")
+}
+
+model SolicitacaoOci {
+  id                   String            @id @default(uuid())
+  numeroProtocolo      String            @unique
+  pacienteId           String
+  ociId                String
+  tipo                 TipoOci
+  dataSolicitacao      DateTime          @default(now())
+  dataPrazo            DateTime // Calculado baseado no tipo (30d oncologia, 60d geral)
+  dataConclusao        DateTime?
+  status               StatusSolicitacao @default(PENDENTE)
+  observacoes          String?
+  unidadeOrigem        String // UBS que solicitou
+  unidadeDestino       String? // Unidade que executará
+  // APAC - validade 2 competências (Portaria SAES 1640/2024, Manual PMAE/OCI)
+  competenciaInicioApac    String?  // YYYYMM ex.: 202601
+  competenciaFimApac       String?  // YYYYMM ex.: 202602
+  dataInicioValidadeApac   DateTime? // Data do 1º procedimento secundário realizado
+  dataEncerramentoApac     DateTime? // Data do último procedimento (encerramento para faturamento SIA)
+  // Autorização APAC
+  numeroAutorizacaoApac        String?   // Número da autorização da APAC (13 dígitos, 5º = 7)
+  nomeProfissionalAutorizador  String?   // Nome do profissional autorizador
+  cnsProfissionalAutorizador   String?   // Cartão Nacional de Saúde (CNS) do profissional
+  dataAutorizacaoApac          DateTime? // Data da autorização
+  tipoApac                     String?   @default("3") // Tipo de APAC: "3" = APAC Única (não admite continuidade)
+  motivoSaida                  String?   // Motivo de saída: 1.1, 1.2, 1.4, 1.5, 4.1, 4.2, 4.3
+  // Campos específicos para procedimentos oncológicos
+  dataDiagnosticoCitoHistopatologico DateTime? // Data diagnóstico cito/histopatológico (oncológico)
+  cidPrincipal                String?   // CID Principal (obrigatório para oncologia com atributo 055)
+  cidSecundario               String?   // CID Secundário (opcional para oncologia)
+  justificativaCancelamento   String?   // Obrigatório ao cancelar: motivo ou "Prazos não puderam ser cumpridos"
+  criadoPorId          String
+  atualizadoPorId      String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  paciente      Paciente               @relation(fields: [pacienteId], references: [id])
+  oci           Oci                    @relation(fields: [ociId], references: [id])
+  criadoPor     Usuario                @relation("CriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoPor Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
+  execucoes     ExecucaoProcedimento[]
+  alerta        AlertaPrazo?           @relation("Alertas")
+  anexos        AnexoSolicitacao[]
+
+  @@index([status])
+  @@index([dataPrazo])
+  @@index([dataSolicitacao])
+  @@map("solicitacoes_oci")
+}
+
+model AnexoSolicitacao {
+  id                String   @id @default(uuid())
+  solicitacaoOciId  String
+  nomeOriginal      String   // nome do arquivo enviado
+  caminhoArmazenado String   // path em disco (ex.: uploads/solicitacoes/:id/:uuid.pdf)
+  contentType       String   @default("application/pdf")
+  tamanhoBytes      Int
+  createdAt         DateTime @default(now())
+
+  solicitacao SolicitacaoOci @relation(fields: [solicitacaoOciId], references: [id], onDelete: Cascade)
+
+  @@index([solicitacaoOciId])
+  @@map("anexos_solicitacoes")
+}
+
+model ExecucaoProcedimento {
+  id                         String    @id @default(uuid())
+  solicitacaoId              String
+  procedimentoId             String
+  dataAgendamento            DateTime?
+  dataExecucao               DateTime?
+  status                     String   // PENDENTE, AGENDADO, EXECUTADO, CANCELADO
+  observacoes                String?
+  profissional               String?  // Nome do profissional que executou
+  unidadeExecutora           String?
+  executanteId               String?  // Usuário executante (tipo EXECUTANTE) para quem foi agendado
+  // Biópsia: só pode ser EXECUTADO após registro do resultado
+  resultadoBiopsia           String?
+  dataColetaMaterialBiopsia  DateTime?
+  dataRegistroResultadoBiopsia DateTime?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  solicitacao  SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  procedimento ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
+  executante   Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
+
+  @@index([solicitacaoId])
+  @@index([status])
+  @@index([executanteId])
+  @@map("execucoes_procedimentos")
+}
+
+model AlertaPrazo {
+  id              String    @id @default(uuid())
+  solicitacaoId   String    @unique
+  diasRestantes   Int
+  nivelAlerta     String // INFO, ATENCAO, CRITICO
+  notificado      Boolean   @default(false)
+  dataNotificacao DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  solicitacao SolicitacaoOci @relation("Alertas", fields: [solicitacaoId], references: [id], onDelete: Cascade)
+
+  @@index([nivelAlerta])
+  @@index([notificado])
+  @@map("alertas_prazos")
+}

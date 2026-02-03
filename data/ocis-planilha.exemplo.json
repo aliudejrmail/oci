@@ -1,0 +1,90 @@
+[
+  {
+    "codigo": "090101",
+    "nome": "Ofertas de Cuidados Integrados em Oncologia",
+    "descricao": "OCI Oncologia - avaliação diagnóstica e terapêutica (SIGTAP forma 090101).",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 30,
+    "procedimentos": [
+      { "codigoSigtap": "0901010014", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0901010049", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0901010057", "ordem": 3, "obrigatorio": true },
+      { "codigoSigtap": "0901010073", "ordem": 4, "obrigatorio": true },
+      { "codigoSigtap": "0901010081", "ordem": 5, "obrigatorio": true },
+      { "codigoSigtap": "0901010090", "ordem": 6, "obrigatorio": false },
+      { "codigoSigtap": "0901010103", "ordem": 7, "obrigatorio": false },
+      { "codigoSigtap": "0901010111", "ordem": 8, "obrigatorio": true },
+      { "codigoSigtap": "0901010120", "ordem": 9, "obrigatorio": true }
+    ]
+  },
+  {
+    "codigo": "090201",
+    "nome": "Ofertas de Cuidados Integrados em Cardiologia",
+    "descricao": "OCI Cardiologia (SIGTAP forma 090201).",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      { "codigoSigtap": "0902010018", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0902010026", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0902010034", "ordem": 3, "obrigatorio": true },
+      { "codigoSigtap": "0902010042", "ordem": 4, "obrigatorio": false },
+      { "codigoSigtap": "0902010050", "ordem": 5, "obrigatorio": false },
+      { "codigoSigtap": "0902010069", "ordem": 6, "obrigatorio": true }
+    ]
+  },
+  {
+    "codigo": "090301",
+    "nome": "Ofertas de Cuidados Integrados em Ortopedia",
+    "descricao": "OCI Ortopedia (SIGTAP forma 090301).",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      { "codigoSigtap": "0903010011", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0903010020", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0903010038", "ordem": 3, "obrigatorio": false },
+      { "codigoSigtap": "0903010046", "ordem": 4, "obrigatorio": false }
+    ]
+  },
+  {
+    "codigo": "090401",
+    "nome": "Ofertas de Cuidados Integrados em Otorrinolaringologia",
+    "descricao": "OCI Otorrinolaringologia (SIGTAP forma 090401).",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      { "codigoSigtap": "0904010015", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0904010023", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0904010031", "ordem": 3, "obrigatorio": true }
+    ]
+  },
+  {
+    "codigo": "090501",
+    "nome": "Ofertas de Cuidados Integrados em Oftalmologia",
+    "descricao": "OCI Oftalmologia (SIGTAP forma 090501).",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      { "codigoSigtap": "0905010019", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0905010027", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0905010035", "ordem": 3, "obrigatorio": true },
+      { "codigoSigtap": "0905010043", "ordem": 4, "obrigatorio": true },
+      { "codigoSigtap": "0905010051", "ordem": 5, "obrigatorio": false },
+      { "codigoSigtap": "0905010060", "ordem": 6, "obrigatorio": false },
+      { "codigoSigtap": "0905010078", "ordem": 7, "obrigatorio": false }
+    ]
+  },
+  {
+    "codigo": "090601",
+    "nome": "Ofertas de Cuidados Integrados em Saúde da Mulher - Ginecologia",
+    "descricao": "OCI Saúde da Mulher / Ginecologia (SIGTAP forma 090601).",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      { "codigoSigtap": "0906010012", "ordem": 1, "obrigatorio": true },
+      { "codigoSigtap": "0906010020", "ordem": 2, "obrigatorio": true },
+      { "codigoSigtap": "0906010039", "ordem": 3, "obrigatorio": true },
+      { "codigoSigtap": "0906010047", "ordem": 4, "obrigatorio": true },
+      { "codigoSigtap": "0906010055", "ordem": 5, "obrigatorio": false }
+    ]
+  }
+]

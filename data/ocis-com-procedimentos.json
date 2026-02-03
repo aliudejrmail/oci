@@ -1,0 +1,1108 @@
+[
+  {
+    "codigo": "0901010014",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA INICIAL DE CÂNCER DE MAMA",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0204030030",
+        "nome": "MAMOGRAFIA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0205020097",
+        "nome": "ULTRASSONOGRAFIA MAMARIA BILATERAL",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0901010090",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE CÂNCER DE MAMA – I",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0201010585",
+        "nome": "PUNÇÃO ASPIRATIVA DE MAMA POR AGULHA FINA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203010043",
+        "nome": "CITOPATOLÓGICO DE MAMA",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0201010569",
+        "nome": "BIOPSIA/EXERESE DE NÓDULO DE MAMA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010103",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE CÂNCER DE MAMA-II",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0201010607",
+        "nome": "PUNÇÃO DE MAMA POR AGULHA GROSSA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020065",
+        "nome": "EXAME ANATOMO-PATOLOGICO DE MAMA",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0201010569",
+        "nome": "BIOPSIA/EXERESE DE NÓDULO DE MAMA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010057",
+    "nome": "OCI INVESTIGAÇÃO DIAGNÓSTICA DE CÂNCER DE COLO DE ÚTERO",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0201010066",
+        "nome": "BIÓPSIA DO COLO UTERINO",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020081",
+        "nome": "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO-BIÓPSIA",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211040029",
+        "nome": "COLPOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010111",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA E TERAPÊUTICA DE CÂNCER DE COLO DO ÚTERO-I",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0409060089",
+        "nome": "EXCISÃO TIPO I DO COLO UTERINO",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020022",
+        "nome": "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO - PECA CIRURGICA",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211040029",
+        "nome": "COLPOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010120",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA E TERAPÊUTICA DE CÂNCER DE COLO DO ÚTERO-II",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0409060305",
+        "nome": "EXCISÃO TIPO 2 DO COLO UTERINO",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020022",
+        "nome": "EXAME ANATOMO-PATOLÓGICO DO COLO UTERINO - PECA CIRURGICA",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211040029",
+        "nome": "COLPOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010049",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE CÂNCER DE PRÓSTATA",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0205020119",
+        "nome": "ULTRASSONOGRAFIA DE PRÓSTATA VIA TRANSRETAL",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0201010410",
+        "nome": "BIÓPSIA DE PRÓSTATA VIA TRANSRETAL",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0203020030",
+        "nome": "EXAME ANATOMO PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRÚRGICA OU POR BIÓPSIA (EXCETO COLO UTERINO E MAMA)",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0901010073",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA DE CÂNCER GÁSTRICO",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0209010037",
+        "nome": "ESOFAGOGASTRODUODENOSCOPIA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020030",
+        "nome": "EXAME ANATOMO PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRURGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0901010081",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA DE CÂNCER COLORRETAL",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0209010029",
+        "nome": "COLONOSCOPIA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0203020030",
+        "nome": "EXAME ANATOMO PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRURGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0902010018",
+    "nome": "OCI AVALIAÇÃO DE RISCO CIRÚRGICO",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211020036",
+        "nome": "ELETROCARDIOGRAMA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0204030153",
+        "nome": "RADIOGRAFIA DE TORAX (PA E PERFIL)",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0902010026",
+    "nome": "OCI AVALIAÇÃO CARDIOLÓGICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211020036",
+        "nome": "ELETROCARDIOGRAMA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0204030153",
+        "nome": "RADIOGRAFIA DE TÓRAX (PA E PERFIL)",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0205010032",
+        "nome": "ECOCARDIOGRAFIA TRANSTORACICA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0902010034",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA INICIAL - SÍNDROME CORONARIANA CRÔNICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211020036",
+        "nome": "ELETROCARDIOGRAMA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211020060",
+        "nome": "TESTE DE ESFORCO / TESTE ERGOMÉTRICO",
+        "obrigatorio": true,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0205010032",
+        "nome": "ECOCARDIOGRAFIA TRANSTORACICA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0902010042",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA I – SÍNDROME CORONARIANA CRÔNICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0205010016",
+        "nome": "ECOCARDIOGRAFIA DE ESTRESSE",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0902010050",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA II – SÍNDROME CORONARIANA CRÔNICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MEDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0208010033",
+        "nome": "CINTILOGRAFIA DE MIOCÁRDIO P/ AVALIAÇÃO DA PERFUSÃO EM SITUAÇÃO DE REPOUSO (MÍNIMO 3 PROJEÇÕES)",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0208010025",
+        "nome": "CINTILOGRAFIA DE MIOCÁRDIO PARA AVALIAÇÃO DA PERFUSÃO EM SITUAÇÃO DE ESTRESSE (MÍNIMO 3 PROJEÇÕES)",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0902010069",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA - INSUFICIÊNCIA CARDÍACA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211020036",
+        "nome": "ELETROCARDIOGRAMA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211020060",
+        "nome": "TESTE DE ESFORÇO / TESTE ERGOMÉTRICO",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211020044",
+        "nome": "MONITORAMENTO PELO SISTEMA HOLTER 24 HS (3 CANAIS)",
+        "obrigatorio": false,
+        "ordem": 5
+      },
+      {
+        "codigoSigtap": "0205010032",
+        "nome": "ECOCARDIOGRAFIA TRANSTORÁCICA",
+        "obrigatorio": false,
+        "ordem": 6
+      },
+      {
+        "codigoSigtap": "0202010791",
+        "nome": "DOSAGEM DE PEPTÍDEOS NATRIURÉTICOS TIPO B (BNP E NT-PROBNP)",
+        "obrigatorio": false,
+        "ordem": 7
+      }
+    ]
+  },
+  {
+    "codigo": "0903010011",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA EM ORTOPEDIA COM RECURSOS DE RADIOLOGIA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MEDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      }
+    ]
+  },
+  {
+    "codigo": "0903010020",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA EM ORTOPEDIA COM RECURSOS DE RADIOLOGIA E ULTRASSONOGRAFIA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0205020062",
+        "nome": "ULTRASSONOGRAFIA DE ARTICULAÇÃO",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0903010038",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA EM ORTOPEDIA COM RECURSOS DE RADIOLOGIA E TOMOGRAFIA COMPUTADORIZADA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      }
+    ]
+  },
+  {
+    "codigo": "0903010040",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA EM ORTOPEDIA COM RECURSOS DE RADIOLOGIA E RESSONÂNCIA MAGNÉTICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0301010307",
+        "nome": "TELECONSULTA MÉDICA NA ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 2
+      }
+    ]
+  },
+  {
+    "codigo": "0904010015",
+    "nome": "OCI AVALIAÇÃO INICIAL DIAGNÓSTICA DE DÉFICIT AUDITIVO",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211070041",
+        "nome": "AUDIOMETRIA TONAL LIMIAR (VIA AEREA / OSSEA)",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211070203",
+        "nome": "IMITANCIOMETRIA",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0904010023",
+    "nome": "OCI PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE DÉFICIT AUDITIVO",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211070041",
+        "nome": "AUDIOMETRIA TONAL LIMIAR (VIA AEREA / OSSEA)",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211070262",
+        "nome": "POTENCIAL EVOCADO AUDITIVO DE CURTA MÉDIA E LONGA LATÊNCIA",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211070203",
+        "nome": "IMITANCIOMETRIA",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0904010031",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA DE NASOFARINGE E DE OROFARINGE",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0209040041",
+        "nome": "VIDEOLARINGOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0209040025",
+        "nome": "LARINGOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0905010019",
+    "nome": "OCI AVALIAÇÃO INICIAL EM OFTALMOLOGIA - 0 A 8 ANOS",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211060232",
+        "nome": "TESTE ORTÓPTICO",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0905010027",
+    "nome": "OCI AVALIAÇÃO DE ESTRABISMO",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211060232",
+        "nome": "TESTE ORTÓPTICO",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 5
+      },
+      {
+        "codigoSigtap": "0211060100",
+        "nome": "FUNDOSCOPIA",
+        "obrigatorio": false,
+        "ordem": 6
+      },
+      {
+        "codigoSigtap": "0211060178",
+        "nome": "RETINOGRAFIA COLORIDA BINOCULAR",
+        "obrigatorio": false,
+        "ordem": 7
+      }
+    ]
+  },
+  {
+    "codigo": "0905010035",
+    "nome": "OCI AVALIAÇÃO INICIAL EM OFTALMOLOGIA - A PARTIR DE 9 ANOS",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211060232",
+        "nome": "TESTE ORTÓPTICO",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0905010043",
+    "nome": "OCI AVALIAÇÃO DE RETINOPATIA DIABÉTICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060178",
+        "nome": "RETINOGRAFIA COLORIDA BINOCULAR",
+        "obrigatorio": true,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": false,
+        "ordem": 5
+      }
+    ]
+  },
+  {
+    "codigo": "0905010051",
+    "nome": "OCI AVALIAÇÃO INICIAL PARA ONCOLOGIA OFTALMOLÓGICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0205020089",
+        "nome": "ULTRASSONOGRAFIA DE GLOBO OCULAR / ORBITA (MONOCULAR)",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060178",
+        "nome": "RETINOGRAFIA COLORIDA BINOCULAR",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 5
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": false,
+        "ordem": 6
+      }
+    ]
+  },
+  {
+    "codigo": "0905010060",
+    "nome": "OCI AVALIAÇÃO DIAGNÓSTICA EM NEURO OFTALMOLOGIA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0211060038",
+        "nome": "CAMPIMETRIA COMPUTADORIZADA OU MANUAL COM GRÁFICO",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060224",
+        "nome": "TESTE DE VISÃO DE CORES",
+        "obrigatorio": false,
+        "ordem": 4
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 5
+      },
+      {
+        "codigoSigtap": "0211060178",
+        "nome": "RETINOGRAFIA COLORIDA BINOCULAR",
+        "obrigatorio": false,
+        "ordem": 6
+      },
+      {
+        "codigoSigtap": "0211060020",
+        "nome": "BIOMICROSCOPIA DE FUNDO DE OLHO",
+        "obrigatorio": false,
+        "ordem": 7
+      }
+    ]
+  },
+  {
+    "codigo": "0905010078",
+    "nome": "OCI EXAMES OFTALMOLÓGICOS SOB SEDAÇÃO",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0417010060",
+        "nome": "SEDAÇÃO",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0211060259",
+        "nome": "TONOMETRIA",
+        "obrigatorio": false,
+        "ordem": 3
+      },
+      {
+        "codigoSigtap": "0211060127",
+        "nome": "MAPEAMENTO DE RETINA",
+        "obrigatorio": false,
+        "ordem": 4
+      }
+    ]
+  },
+  {
+    "codigo": "0906010012",
+    "nome": "OCI - GIN1 - AVALIAÇÃO DIAGNÓSTICA INICIAL DE SAÚDE DA MULHER (GINECOLOGIA) I",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0205020186",
+        "nome": "ULTRASSONOGRAFIA TRANSVAGINAL",
+        "obrigatorio": false,
+        "ordem": 2
+      }
+    ]
+  },
+  {
+    "codigo": "0906010020",
+    "nome": "OCI - GIN1 - AVALIAÇÃO DIAGNÓSTICA INICIAL DE SAÚDE DA MULHER (GINECOLOGIA) II",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0205020160",
+        "nome": "ULTRASSONOGRAFIA PÉLVICA",
+        "obrigatorio": false,
+        "ordem": 2
+      }
+    ]
+  },
+  {
+    "codigo": "0906010039",
+    "nome": "OCI - GIN2 - PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE SAÚDE DA MULHER (GINECOLOGIA) - SANGRAMENTO UTERINO ANORMAL I",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0209030011",
+        "nome": "HISTEROSCOPIA CIRÚRGICA - com biópsia",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0203020081",
+        "nome": "EXAME ANATOMO-PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRÚRGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0906010047",
+    "nome": "OCI - GIN2 - PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE SAÚDE DA MULHER (GINECOLOGIA)- SANGRAMENTO UTERINO ANORMAL II",
+    "tipo": "ONCOLOGICO",
+    "prazoMaximoDias": 30,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0201010160",
+        "nome": "BIÓPSIA DE ENDOMETRIO POR ASPIRAÇÃO MANUAL INTRA-UTERINA",
+        "obrigatorio": true,
+        "ordem": 2
+      },
+      {
+        "codigoSigtap": "0203020081",
+        "nome": "EXAME ANATOMO-PATOLÓGICO PARA CONGELAMENTO / PARAFINA POR PEÇA CIRÚRGICA OU POR BIOPSIA (EXCETO COLO UTERINO E MAMA)",
+        "obrigatorio": false,
+        "ordem": 3
+      }
+    ]
+  },
+  {
+    "codigo": "0906010055",
+    "nome": "OCI - GIN3 - PROGRESSÃO DA AVALIAÇÃO DIAGNÓSTICA DE SAÚDE DA MULHER (GINECOLOGIA)- ENDOMETRIOSE PROFUNDA- CASOS COMPLEXOS E PROGRAMAÇÃO CIRÚRGICA",
+    "tipo": "GERAL",
+    "prazoMaximoDias": 60,
+    "procedimentos": [
+      {
+        "codigoSigtap": "0301010072",
+        "nome": "CONSULTA MÉDICA EM ATENÇÃO ESPECIALIZADA",
+        "obrigatorio": true,
+        "ordem": 1
+      },
+      {
+        "codigoSigtap": "0207030022",
+        "nome": "RESSONÂNCIA MAGNÉTICA DE BACIA/ PELVE/ ABDÔMEN INFERIOR",
+        "obrigatorio": false,
+        "ordem": 2
+      }
+    ]
+  }
+]

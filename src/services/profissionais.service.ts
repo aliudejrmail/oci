@@ -1,0 +1,173 @@
+import { PrismaClient } from '@prisma/client';
+
+export class ProfissionaisService {
+  constructor(private prisma: PrismaClient) {}
+
+  async listarProfissionais(filtros: {
+    search?: string;
+    ativo?: boolean;
+    page?: number;
+    limit?: number;
+  }) {
+    try {
+      const page = filtros.page || 1;
+      const limit = filtros.limit || 20;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+
+      if (filtros.ativo !== undefined) {
+        where.ativo = filtros.ativo;
+      }
+
+      if (filtros.search) {
+        where.OR = [
+          { nome: { contains: filtros.search, mode: 'insensitive' } },
+          { cns: { contains: filtros.search } },
+          { cbo: { contains: filtros.search } }
+        ];
+      }
+
+      const [profissionais, total] = await Promise.all([
+        this.prisma.profissional.findMany({
+          where,
+          orderBy: { nome: 'asc' },
+          skip,
+          take: limit
+        }),
+        this.prisma.profissional.count({ where })
+      ]);
+
+      return {
+        profissionais,
+        paginacao: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error: any) {
+      console.error('Erro no service listarProfissionais:', error);
+      throw error;
+    }
+  }
+
+  async buscarProfissionalPorId(id: string) {
+    return await this.prisma.profissional.findUnique({
+      where: { id }
+    });
+  }
+
+  async criarProfissional(data: {
+    nome: string;
+    cns: string;
+    cbo: string;
+  }) {
+    // Validar CNS (15 dígitos)
+    const cnsLimpo = data.cns.replace(/\D/g, '');
+    if (cnsLimpo.length !== 15) {
+      throw new Error('O CNS deve conter exatamente 15 dígitos.');
+    }
+
+    // Verificar se já existe profissional com esse CNS
+    const existente = await this.prisma.profissional.findUnique({
+      where: { cns: cnsLimpo }
+    });
+
+    if (existente) {
+      throw new Error('Já existe um profissional cadastrado com este CNS.');
+    }
+
+    return await this.prisma.profissional.create({
+      data: {
+        nome: data.nome.trim(),
+        cns: cnsLimpo,
+        cbo: data.cbo.trim()
+      }
+    });
+  }
+
+  async atualizarProfissional(id: string, data: {
+    nome?: string;
+    cns?: string;
+    cbo?: string;
+    ativo?: boolean;
+  }) {
+    const profissional = await this.prisma.profissional.findUnique({
+      where: { id }
+    });
+
+    if (!profissional) {
+      throw new Error('Profissional não encontrado');
+    }
+
+    const updateData: any = {};
+
+    if (data.nome !== undefined) {
+      updateData.nome = data.nome.trim();
+    }
+
+    if (data.cns !== undefined) {
+      const cnsLimpo = data.cns.replace(/\D/g, '');
+      if (cnsLimpo.length !== 15) {
+        throw new Error('O CNS deve conter exatamente 15 dígitos.');
+      }
+
+      // Verificar se outro profissional já usa esse CNS
+      const existente = await this.prisma.profissional.findUnique({
+        where: { cns: cnsLimpo }
+      });
+
+      if (existente && existente.id !== id) {
+        throw new Error('Já existe outro profissional cadastrado com este CNS.');
+      }
+
+      updateData.cns = cnsLimpo;
+    }
+
+    if (data.cbo !== undefined) {
+      updateData.cbo = data.cbo.trim();
+    }
+
+    if (data.ativo !== undefined) {
+      updateData.ativo = data.ativo;
+    }
+
+    return await this.prisma.profissional.update({
+      where: { id },
+      data: updateData
+    });
+  }
+
+  async excluirProfissional(id: string) {
+    const profissional = await this.prisma.profissional.findUnique({
+      where: { id }
+    });
+
+    if (!profissional) {
+      throw new Error('Profissional não encontrado');
+    }
+
+    // Verificar se há solicitações com autorização APAC deste profissional
+    const totalAutorizacoes = await this.prisma.solicitacaoOci.count({
+      where: {
+        cnsProfissionalAutorizador: profissional.cns,
+        numeroAutorizacaoApac: { not: null }
+      }
+    });
+
+    if (totalAutorizacoes > 0) {
+      throw new Error(
+        `Não é possível excluir este profissional pois ele possui ${totalAutorizacoes} autorização(ões) APAC registrada(s) no sistema. ` +
+        `Para excluir, primeiro remova ou altere as autorizações APAC associadas a este profissional.`
+      );
+    }
+
+    await this.prisma.profissional.delete({
+      where: { id }
+    });
+
+    return { message: 'Profissional excluído com sucesso' };
+  }
+}
