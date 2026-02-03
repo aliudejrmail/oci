@@ -232,30 +232,43 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const execucao = await service.atualizarExecucaoProcedimento(id, req.body);
+      let execucao;
+      try {
+        execucao = await service.atualizarExecucaoProcedimento(id, req.body);
+      } catch (err: any) {
+        if (err?.message?.includes('execucoes_procedimentos_status_fkey') || err?.message?.includes('Foreign key constraint')) {
+          await this.corrigirStatusExecucaoBanco();
+          execucao = await service.atualizarExecucaoProcedimento(id, req.body);
+        } else {
+          throw err;
+        }
+      }
       res.json(execucao);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
   }
 
+  private async corrigirStatusExecucaoBanco() {
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "status_execucao" ("codigo", "descricao")
+      VALUES ('REALIZADO', 'Realizado')
+      ON CONFLICT ("codigo") DO NOTHING
+    `);
+    await prisma.$executeRawUnsafe(`
+      UPDATE "execucoes_procedimentos" SET "status" = 'REALIZADO' WHERE "status" = 'EXECUTADO'
+    `);
+    await prisma.$executeRawUnsafe(`DELETE FROM "status_execucao" WHERE "codigo" = 'EXECUTADO'`);
+  }
+
   async corrigirStatusExecucao(_req: AuthRequest, res: Response) {
     try {
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO "status_execucao" ("codigo", "descricao")
-        VALUES ('REALIZADO', 'Realizado')
-        ON CONFLICT ("codigo") DO NOTHING
-      `)
-      const updated = await prisma.$executeRawUnsafe(`
-        UPDATE "execucoes_procedimentos" SET "status" = 'REALIZADO' WHERE "status" = 'EXECUTADO'
-      `)
-      await prisma.$executeRawUnsafe(`DELETE FROM "status_execucao" WHERE "codigo" = 'EXECUTADO'`)
+      await this.corrigirStatusExecucaoBanco()
       const statuses = await prisma.$queryRawUnsafe<{ codigo: string }[]>(
         `SELECT "codigo" FROM "status_execucao" ORDER BY "codigo"`
       )
       return res.json({
         message: 'Correção aplicada com sucesso',
-        execucoesAtualizadas: updated,
         statusAtuais: statuses.map((s) => s.codigo)
       })
     } catch (error: any) {
