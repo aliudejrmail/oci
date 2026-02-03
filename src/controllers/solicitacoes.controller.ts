@@ -130,8 +130,14 @@ export class SolicitacoesController {
         return res.status(404).json({ message: 'Solicitação não encontrada' });
       }
 
-      // Usuário de unidade solicitante: só pode ver solicitações realizadas pela sua unidade (ADMIN vê todas)
-      if (authReq.userId && authReq.userTipo !== 'EXECUTANTE' && authReq.userTipo !== 'ADMIN') {
+      // ADMIN, GESTOR e AUTORIZADOR podem ver qualquer solicitação
+      const perfisComAcessoTotal = ['ADMIN', 'GESTOR', 'AUTORIZADOR']
+      if (perfisComAcessoTotal.includes(authReq.userTipo || '')) {
+        return res.json(solicitacao)
+      }
+
+      // Usuário de unidade solicitante: só pode ver solicitações realizadas pela sua unidade
+      if (authReq.userId && authReq.userTipo !== 'EXECUTANTE') {
         const usuarioSolicitante = await prisma.usuario.findUnique({
           where: { id: authReq.userId },
           select: { unidadeId: true, unidade: { select: { cnes: true, nome: true, solicitante: true } } }
