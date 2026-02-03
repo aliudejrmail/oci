@@ -8,6 +8,7 @@ import RegistroAutorizacaoApacModal from '../components/RegistroAutorizacaoApacM
 import RegistroProcedimentosModal from '../components/RegistroProcedimentosModal'
 import EditarSolicitacaoModal from '../components/EditarSolicitacaoModal'
 import AgendarModal from '../components/AgendarModal'
+import { getStatusExibicao } from '../utils/procedimento-display'
 
 // Helper para formatar data sem problemas de timezone
 // Converte string ISO para Date local considerando apenas a parte da data
@@ -666,7 +667,9 @@ export default function SolicitacaoDetalhes() {
           (usuario?.tipo === 'EXECUTANTE'
             ? solicitacao.execucoes?.filter((e: any) => e.status === 'AGENDADO')
             : solicitacao.execucoes
-          )?.map((execucao: any, index: number) => (
+          )?.map((execucao: any, index: number) => {
+            const statusExibicao = getStatusExibicao(execucao, solicitacao.execucoes ?? [])
+            return (
             <div key={execucao.id} className="border border-gray-200 rounded-lg p-2">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -688,19 +691,23 @@ export default function SolicitacaoDetalhes() {
                 <div className="text-right ml-2">
                   <span
                     className={`px-2 py-0.5 text-xs font-medium rounded-full flex items-center gap-1 ${
-                      execucao.status === 'EXECUTADO'
+                      statusExibicao === 'EXECUTADO'
                         ? 'bg-green-100 text-green-800'
-                        : execucao.status === 'AGENDADO'
+                        : statusExibicao === 'DISPENSADO'
+                        ? 'bg-slate-100 text-slate-600'
+                        : statusExibicao === 'AGENDADO'
                         ? 'bg-blue-100 text-blue-800'
                         : execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia
                         ? 'bg-amber-100 text-amber-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}
-                    title={execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia ? 'Procedimento pendente por aguardo de resultado da biópsia' : undefined}
+                    title={execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia ? 'Procedimento pendente por aguardo de resultado da biópsia' : statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
                   >
-                    {execucao.status === 'EXECUTADO' && <CheckCircle size={10} />}
-                    {execucao.status === 'EXECUTADO'
+                    {statusExibicao === 'EXECUTADO' && <CheckCircle size={10} />}
+                    {statusExibicao === 'EXECUTADO'
                       ? 'REALIZADO'
+                      : statusExibicao === 'DISPENSADO'
+                      ? 'DISPENSADO'
                       : execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia
                       ? 'Pendente – aguardando resultado'
                       : execucao.status}
@@ -724,7 +731,7 @@ export default function SolicitacaoDetalhes() {
                 </div>
               </div>
             </div>
-          ))
+          )})
           )}
         </div>
       </div>
@@ -768,6 +775,7 @@ export default function SolicitacaoDetalhes() {
               ? solicitacao.execucoes?.filter((e: any) => e.status === 'AGENDADO')
               : solicitacao.execucoes
           }
+          execucoesCompletas={solicitacao.execucoes}
         />
       )}
 

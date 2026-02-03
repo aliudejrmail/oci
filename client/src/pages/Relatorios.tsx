@@ -207,7 +207,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="submit"
             disabled={loading || carregandoOpcoes}
@@ -225,6 +225,16 @@ export default function Relatorios() {
               </>
             )}
           </button>
+          {resultado && (
+            <button
+              type="button"
+              onClick={imprimir}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium print:hidden"
+            >
+              <Printer size={16} />
+              Imprimir
+            </button>
+          )}
         </div>
       </form>
 
@@ -236,13 +246,13 @@ export default function Relatorios() {
 
       {resultado && (
         <div id="relatorio-impressao" className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="font-semibold text-gray-800">Resultado</h2>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
               <button
                 type="button"
                 onClick={imprimir}
-                className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors"
               >
                 <Printer size={16} />
                 Imprimir
@@ -251,7 +261,7 @@ export default function Relatorios() {
                 <button
                   type="button"
                   onClick={() => exportarCsv((resultado as { solicitacoes: unknown[] }).solicitacoes, 'solicitacoes')}
-                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium transition-colors"
                 >
                   <Download size={16} />
                   Exportar CSV
@@ -261,7 +271,7 @@ export default function Relatorios() {
                 <button
                   type="button"
                   onClick={() => exportarCsv((resultado as { execucoes: unknown[] }).execucoes, 'procedimentos-executados')}
-                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 print:hidden"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium transition-colors"
                 >
                   <Download size={16} />
                   Exportar CSV

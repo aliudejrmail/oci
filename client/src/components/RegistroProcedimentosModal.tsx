@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { X, CheckCircle, Calendar, Trash2 } from 'lucide-react'
+import { getStatusExibicao } from '../utils/procedimento-display'
 
 interface ProcedimentoExecucao {
   id: string
@@ -43,6 +44,8 @@ interface RegistroProcedimentosModalProps {
   onSuccess?: () => void
   solicitacaoId?: string
   execucoes: ProcedimentoExecucao[]
+  /** Lista completa de execuções (para cálculo de status DISPENSADO). Se não informada, usa execucoes. */
+  execucoesCompletas?: ProcedimentoExecucao[]
 }
 
 export default function RegistroProcedimentosModal({
@@ -50,8 +53,10 @@ export default function RegistroProcedimentosModal({
   onClose,
   onSuccess,
   solicitacaoId: _solicitacaoId,
-  execucoes
+  execucoes,
+  execucoesCompletas
 }: RegistroProcedimentosModalProps) {
+  const execucoesParaStatus = execucoesCompletas ?? execucoes
   const { usuario } = useAuth()
   const isAdmin = usuario?.tipo === 'ADMIN'
   const [procedimentos, setProcedimentos] = useState<Array<{
@@ -441,17 +446,23 @@ export default function RegistroProcedimentosModal({
 
           {/* Lista de Procedimentos */}
           <div className="space-y-2">
-            {procedimentos.map((proc, index) => (
+            {procedimentos.map((proc, index) => {
+              const execucao = execucoesParaStatus.find((e) => e.id === proc.execucaoId)
+              const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
+              const dispensado = statusExibicao === 'DISPENSADO'
+              return (
               <div
                 key={proc.execucaoId}
                 className={`border rounded p-2 transition-colors ${
                   proc.realizado
                     ? 'border-green-300 bg-green-50'
+                    : dispensado
+                    ? 'border-slate-200 bg-slate-50'
                     : 'border-gray-200 bg-white'
                 }`}
               >
                 <div className="flex items-start gap-2">
-                  {/* Checkbox */}
+                  {/* Checkbox - desabilitado quando dispensado */}
                   <div className="flex items-center pt-0.5">
                     <input
                       type="checkbox"
@@ -460,18 +471,21 @@ export default function RegistroProcedimentosModal({
                       onChange={() => handleToggleRealizado(index)}
                       disabled={
                         submitting ||
+                        dispensado ||
                         !podeRegistrarPorData(proc) ||
                         (proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()) ||
                         (!proc.ehConsultaEspecializada && !consultaJaRealizada)
                       }
                       title={
-                        !podeRegistrarPorData(proc)
-                          ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
-                          : !proc.ehConsultaEspecializada && !consultaJaRealizada
-                            ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
-                            : proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()
-                              ? 'Preencha o resultado da biópsia abaixo para poder marcar como realizado'
-                              : undefined
+                        dispensado
+                          ? 'Dispensado: outra consulta/teleconsulta já foi realizada'
+                          : !podeRegistrarPorData(proc)
+                            ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
+                            : !proc.ehConsultaEspecializada && !consultaJaRealizada
+                              ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
+                              : proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()
+                                ? 'Preencha o resultado da biópsia abaixo para poder marcar como realizado'
+                                : undefined
                       }
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
                     />
@@ -610,29 +624,52 @@ export default function RegistroProcedimentosModal({
 
                   {/* Status Visual e Ações */}
                   <div className="text-right flex items-center gap-2 flex-wrap justify-end">
-                    {proc.realizado ? (
-                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-0.5">
-                        <CheckCircle size={10} />
-                        REALIZADO
-                      </span>
-                    ) : proc.status === 'AGENDADO' ? (
-                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
-                        <Calendar size={10} />
-                        AGENDADO
-                      </span>
-                    ) : proc.status === 'CANCELADO' ? (
-                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-800">
-                        Cancelado
-                      </span>
-                    ) : proc.ehBiopsia && proc.coletaRegistradaNoBackend && !(proc.resultadoBiopsia ?? '').trim() ? (
-                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-800" title="Procedimento pendente por aguardo de resultado da biópsia">
-                        Pendente – aguardando resultado
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-gray-100 text-gray-800">
-                        PENDENTE
-                      </span>
-                    )}
+                    {(() => {
+                      const execucao = execucoesParaStatus.find((e) => e.id === proc.execucaoId)
+                      const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
+                      if (statusExibicao === 'EXECUTADO' || proc.realizado) {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-0.5">
+                            <CheckCircle size={10} />
+                            REALIZADO
+                          </span>
+                        )
+                      }
+                      if (statusExibicao === 'DISPENSADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-slate-100 text-slate-600" title="Dispensado: outra consulta/teleconsulta já foi realizada">
+                            DISPENSADO
+                          </span>
+                        )
+                      }
+                      if (proc.status === 'AGENDADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
+                            <Calendar size={10} />
+                            AGENDADO
+                          </span>
+                        )
+                      }
+                      if (proc.status === 'CANCELADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-800">
+                            Cancelado
+                          </span>
+                        )
+                      }
+                      if (proc.ehBiopsia && proc.coletaRegistradaNoBackend && !(proc.resultadoBiopsia ?? '').trim()) {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-800" title="Procedimento pendente por aguardo de resultado da biópsia">
+                            Pendente – aguardando resultado
+                          </span>
+                        )
+                      }
+                      return (
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-gray-100 text-gray-800">
+                          PENDENTE
+                        </span>
+                      )
+                    })()}
                     {/* Botão para remover data de realização (apenas admin, apenas se realizado) */}
                     {isAdmin && proc.realizado && (
                       <button
@@ -652,7 +689,7 @@ export default function RegistroProcedimentosModal({
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
           {/* Parte inferior do modal: apenas ações (resultados de biópsia ficam logo abaixo de cada procedimento acima) */}
