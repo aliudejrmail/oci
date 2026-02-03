@@ -1,7 +1,78 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import * as fs from 'fs'
+import * as path from 'path'
 
 const prisma = new PrismaClient()
+
+/** Importa OCIs do JSON (34 OCIs oficiais SIGTAP: 0901010014, 0902010018, etc.) */
+async function importarOcisDoJson() {
+  const jsonPath = path.resolve(process.cwd(), 'data/ocis-com-procedimentos.json')
+  if (!fs.existsSync(jsonPath)) {
+    console.log('⚠️ Arquivo data/ocis-com-procedimentos.json não encontrado. OCIs não importadas.')
+    return
+  }
+  const raw = fs.readFileSync(jsonPath, 'utf-8')
+  const ocis = JSON.parse(raw) as Array<{
+    codigo: string
+    nome: string
+    descricao?: string
+    tipo: 'GERAL' | 'ONCOLOGICO'
+    prazoMaximoDias: number
+    procedimentos: Array<{ codigoSigtap: string; ordem?: number; obrigatorio?: boolean; nome?: string }>
+  }>
+  let count = 0
+  for (const o of ocis) {
+    const oci = await prisma.oci.upsert({
+      where: { codigo: o.codigo },
+      update: { nome: o.nome, descricao: o.descricao ?? null, tipo: o.tipo, prazoMaximoDias: o.prazoMaximoDias },
+      create: {
+        codigo: o.codigo,
+        nome: o.nome,
+        descricao: o.descricao ?? null,
+        tipo: o.tipo,
+        prazoMaximoDias: o.prazoMaximoDias
+      }
+    })
+    let ordem = 1
+    for (const p of o.procedimentos) {
+      const codigoSigtap = String(p.codigoSigtap).trim()
+      if (!codigoSigtap) continue
+      let nome = p.nome?.trim()
+      if (!nome) {
+        const sigtap = await prisma.procedimentoSigtap.findUnique({ where: { codigo: codigoSigtap } })
+        nome = sigtap?.nome ?? codigoSigtap
+      }
+      const existente = await prisma.procedimentoOci.findFirst({
+        where: { ociId: oci.id, codigo: codigoSigtap }
+      })
+      const tipo = nome.toUpperCase().includes('CONSULTA') ? 'CONSULTA' : 'EXAME'
+      const obrigatorio = p.obrigatorio ?? true
+      const ordemProc = p.ordem ?? ordem
+      if (existente) {
+        await prisma.procedimentoOci.update({
+          where: { id: existente.id },
+          data: { codigoSigtap, nome, tipo, ordem: ordemProc, obrigatorio }
+        })
+      } else {
+        await prisma.procedimentoOci.create({
+          data: {
+            ociId: oci.id,
+            codigo: codigoSigtap,
+            codigoSigtap,
+            nome,
+            tipo,
+            ordem: ordemProc,
+            obrigatorio
+          }
+        })
+      }
+      count++
+      ordem++
+    }
+  }
+  console.log(`✅ OCIs importadas: ${ocis.length} OCIs, ${count} procedimentos`)
+}
 
 async function main() {
   console.log('🌱 Iniciando seed do banco de dados...')
@@ -136,26 +207,8 @@ async function main() {
     console.log('✅ Unidade solicitante de exemplo:', segunda.nome)
   }
 
-  // OCIs: utilizar apenas as da tabela SIGTAP. Não criar OCIs com código próprio no seed.
-  // Após o seed, execute: npm run importar:ocis-sigtap
-  // (OCIs 090101, 090201, 090301, 090401, 090501, 090601 com procedimentos codigoSigtap)
-
-  // Criar paciente de exemplo
-  const paciente = await prisma.paciente.upsert({
-    where: { cpf: '12345678900' },
-    update: {},
-    create: {
-      nome: 'João Silva',
-      cpf: '12345678900',
-      dataNascimento: new Date('1980-05-15'),
-      sexo: 'M',
-      telefone: '(11) 98765-4321',
-      email: 'joao.silva@email.com',
-      municipio: 'São Paulo',
-      uf: 'SP'
-    }
-  })
-  console.log('✅ Paciente criado:', paciente.nome)
+  // OCIs: importar do JSON (6 OCIs principais: Oncologia, Cardiologia, Ortopedia, etc.)
+  await importarOcisDoJson()
 
   console.log('🎉 Seed concluído com sucesso!')
 }
