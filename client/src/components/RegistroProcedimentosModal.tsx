@@ -56,7 +56,8 @@ export default function RegistroProcedimentosModal({
   execucoes,
   execucoesCompletas
 }: RegistroProcedimentosModalProps) {
-  const execucoesParaStatus = execucoesCompletas ?? execucoes
+  /** Lista completa para validação e status. Sempre usar quando disponível para incluir EXECUTADO mesmo com execucoes filtrada. */
+  const execucoesParaStatus = execucoesCompletas && execucoesCompletas.length > 0 ? execucoesCompletas : execucoes
   const { usuario } = useAuth()
   const isAdmin = usuario?.tipo === 'ADMIN'
   const [procedimentos, setProcedimentos] = useState<Array<{
@@ -95,8 +96,12 @@ export default function RegistroProcedimentosModal({
   useEffect(() => {
     if (!open) return
 
-    // Inicializar procedimentos com dados atuais
-    const procedimentosInicializados = execucoes.map((exec) => {
+    // Usar lista completa para ter todos os procedimentos (inclui EXECUTADO para consultaJaRealizada)
+    const execucoesParaInicializar = execucoesParaStatus
+    const idsExecucoesExibir = new Set(execucoes.map((e) => e.id))
+    const procedimentosInicializados = execucoesParaInicializar
+      .filter((exec) => idsExecucoesExibir.size === 0 || idsExecucoesExibir.has(exec.id))
+      .map((exec) => {
       const ehBiopsia = isProcedimentoBiopsia(exec.procedimento.nome)
       const hoje = new Date().toISOString().split('T')[0]
       // Data de coleta: só preencher se já foi registrada no backend; senão vazio (pendente de tudo)
@@ -137,12 +142,13 @@ export default function RegistroProcedimentosModal({
     setProcedimentos(procedimentosInicializados)
     setErro(null)
     setSucesso(null)
-  }, [open, execucoes])
+  }, [open, execucoes, execucoesCompletas])
 
-  /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa para incluir EXECUTADO mesmo quando execucoes está filtrada (ex.: EXECUTANTE vê só agendados). */
-  const consultaJaRealizada = execucoesParaStatus.some(
-    (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
-  )
+  /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa + fallback nos procedimentos do form. */
+  const consultaJaRealizada =
+    execucoesParaStatus.some(
+      (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
+    ) || procedimentos.some((p) => p.ehConsultaEspecializada && p.realizado)
 
   const handleToggleRealizado = (index: number) => {
     const proc = procedimentos[index]
@@ -268,9 +274,10 @@ export default function RegistroProcedimentosModal({
     setSucesso(null)
 
     const procedimentosRealizados = procedimentos.filter(p => p.realizado)
-    const consultaJaRealizadaSubmit = execucoesParaStatus.some(
-      (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
-    )
+    const consultaJaRealizadaSubmit =
+      execucoesParaStatus.some(
+        (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
+      ) || procedimentosRealizados.some((p) => p.ehConsultaEspecializada)
     const outrosRealizadosSemConsulta = procedimentosRealizados.some((p) => !p.ehConsultaEspecializada) && !consultaJaRealizadaSubmit
     if (outrosRealizadosSemConsulta) {
       setErro('O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.')
