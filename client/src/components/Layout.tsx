@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { 
@@ -10,12 +11,15 @@ import {
   UserCog,
   Building2,
   BarChart3,
-  FileArchive
+  FileArchive,
+  Menu,
+  X
 } from 'lucide-react'
 
 export default function Layout() {
   const { usuario, logout } = useAuth()
   const location = useLocation()
+  const [sidebarAberta, setSidebarAberta] = useState(false)
 
   // Menu base: todos os perfis
   const menuBase = [
@@ -68,20 +72,53 @@ export default function Layout() {
         ...(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR' ? [{ path: '/usuarios', label: 'Usuários e Perfis', icon: UserCog }] : [])
       ]
 
+  const fecharSidebar = () => setSidebarAberta(false)
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Overlay mobile - fecha sidebar ao clicar fora */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity ${sidebarAberta ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={fecharSidebar}
+        aria-hidden="true"
+      />
+
+      {/* Botão hambúrguer - visível só em mobile */}
+      <button
+        type="button"
+        onClick={() => setSidebarAberta(true)}
+        className="fixed top-4 left-4 z-30 md:hidden p-2 rounded-lg bg-white shadow-md text-gray-700 hover:bg-gray-100"
+        aria-label="Abrir menu"
+      >
+        <Menu size={24} />
+      </button>
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg">
-        <div className="p-6 border-b">
-          <h1 className="text-lg font-bold text-primary-600 leading-tight">
-            Sec. Municipal de Saúde
-          </h1>
-          <p className="text-sm text-gray-500 mt-2">
-            Prefeitura de Parauapebas
-          </p>
+      <aside
+        className={`fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 transform transition-transform duration-200 ease-out md:translate-x-0 ${
+          sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        <div className="p-6 border-b flex items-start justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-primary-600 leading-tight">
+              Sec. Municipal de Saúde
+            </h1>
+            <p className="text-sm text-gray-500 mt-2">
+              Prefeitura de Parauapebas
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fecharSidebar}
+            className="md:hidden p-2 -mr-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
+            aria-label="Fechar menu"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <nav className="p-4">
+        <nav className="p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
           {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path || 
@@ -91,6 +128,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={fecharSidebar}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
                   isActive
                     ? 'bg-primary-50 text-primary-700 font-medium'
@@ -104,10 +142,10 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-white">
           <div className="mb-3 px-4">
-            <p className="text-sm font-medium text-gray-900">{usuario?.nome}</p>
-            <p className="text-xs text-gray-500">{usuario?.email}</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{usuario?.nome}</p>
+            <p className="text-xs text-gray-500 truncate">{usuario?.email}</p>
           </div>
           <button
             onClick={logout}
@@ -120,7 +158,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="ml-64 p-8">
+      <main className="md:ml-64 p-4 pt-16 md:pt-8 md:p-8 min-h-screen">
         <Outlet />
       </main>
     </div>

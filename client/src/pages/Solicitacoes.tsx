@@ -142,9 +142,9 @@ export default function Solicitacoes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Solicitações OCI</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Solicitações OCI</h1>
           <p className="text-gray-600 mt-1">
             {usuario?.tipo === 'AUTORIZADOR' ? 'Registro de APAC e acompanhamento' : usuario?.tipo === 'EXECUTANTE' ? 'Registro de procedimentos executados' : 'Gestão de solicitações de procedimentos'}
           </p>
@@ -178,7 +178,7 @@ export default function Solicitacoes() {
       )}
 
       {/* Filtros */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className={`grid grid-cols-1 gap-4 ${podeFiltrarPorUnidade ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <div className="md:col-span-2">
             <div className="relative">

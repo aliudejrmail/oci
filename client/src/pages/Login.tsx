@@ -27,7 +27,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
-      <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+      <div className="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="text-center mb-8">
           <img src="/logo_oci.png" alt="Ecossistema de Cuidados Integrados" className="h-16 mx-auto mb-4 object-contain" />
           <h1 className="text-3xl font-bold text-gray-900">Ecossistema de Cuidados Integrados</h1>

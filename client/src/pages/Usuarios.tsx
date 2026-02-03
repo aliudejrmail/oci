@@ -232,9 +232,9 @@ export default function Usuarios() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Usuários e Perfis</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Usuários e Perfis</h1>
           <p className="text-gray-600 mt-1">Cadastro de usuários e perfis de uso do sistema</p>
           {usuarioLogado?.tipo === 'GESTOR' && (
             <p className="text-amber-700 text-sm mt-1 bg-amber-50 px-2 py-1 rounded inline-block">
@@ -257,7 +257,7 @@ export default function Usuarios() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className="flex gap-4 mb-6 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />

@@ -134,9 +134,9 @@ export default function UnidadesExecutantes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Unidades Executantes e Solicitantes</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Unidades Executantes e Solicitantes</h1>
           <p className="text-gray-600 mt-1">Cadastro de estabelecimentos de saúde (CNES, nome e papéis: executante e/ou solicitante)</p>
         </div>
         <button
@@ -154,7 +154,7 @@ export default function UnidadesExecutantes() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className="flex gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />

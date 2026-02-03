@@ -54,9 +54,9 @@ export default function Pacientes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Pacientes</h1>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Pacientes</h1>
           <p className="text-gray-600 mt-1">Gestão de pacientes do sistema</p>
         </div>
         <button
@@ -74,7 +74,7 @@ export default function Pacientes() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className="relative mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
