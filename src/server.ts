@@ -66,7 +66,7 @@ if (process.env.RENDER_EXTERNAL_URL && !clientOrigins.includes(process.env.RENDE
   clientOrigins.push(process.env.RENDER_EXTERNAL_URL);
 }
 app.use(cors({
-  origin: (origin, cb) => {
+  origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
     if (!origin || clientOrigins.includes(origin)) return cb(null, true);
     return cb(null, false);
   },
@@ -76,12 +76,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: express.Request, res: express.Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Health check do banco (diagnóstico de erros 500)
-app.get('/api/health/db', async (_req, res) => {
+app.get('/api/health/db', async (_req: express.Request, res: express.Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: 'ok', db: 'conectado' });
@@ -113,7 +113,7 @@ app.use('/api/dashboard', dashboardRoutes);
 if (isProduction) {
   const clientDist = path.join(__dirname, '..', 'client', 'dist');
   app.use(express.static(clientDist));
-  app.get('*', (_req, res) => {
+  app.get('*', (_req: express.Request, res: express.Response) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
