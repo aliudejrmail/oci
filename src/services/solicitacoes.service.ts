@@ -5,6 +5,7 @@ import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
   obrigatoriosSatisfeitos,
+  isProcedimentoConsultaOuTeleconsulta,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
@@ -712,8 +713,46 @@ export class SolicitacoesService {
     const execucao = await this.prisma.execucaoProcedimento.update({
       where: { id },
       data: dataAtualizacao,
-      include: { solicitacao: true }
+      include: { solicitacao: true, procedimento: true }
     });
+
+    // Regra consulta/teleconsulta: ao marcar um como EXECUTADO, os outros do grupo ficam DISPENSADO no banco
+    if (data.status === 'EXECUTADO' && isProcedimentoConsultaOuTeleconsulta(execucao.procedimento.nome)) {
+      const outrasExecucoes = await this.prisma.execucaoProcedimento.findMany({
+        where: {
+          solicitacaoId: execucao.solicitacaoId,
+          id: { not: id },
+          status: { in: ['PENDENTE', 'AGENDADO'] }
+        },
+        include: { procedimento: true }
+      });
+      const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) =>
+        isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome)
+      );
+      if (outrasConsultaTeleconsulta.length > 0) {
+        await this.prisma.execucaoProcedimento.updateMany({
+          where: { id: { in: outrasConsultaTeleconsulta.map((e) => e.id) } },
+          data: { status: 'DISPENSADO' }
+        });
+      }
+    }
+
+    // Reverter DISPENSADO para PENDENTE quando o EXECUTADO do grupo é desfeito
+    if (data.status === 'PENDENTE' && data.dataExecucao === null && isProcedimentoConsultaOuTeleconsulta(execucao.procedimento.nome)) {
+      const dispensadas = await this.prisma.execucaoProcedimento.findMany({
+        where: { solicitacaoId: execucao.solicitacaoId, status: 'DISPENSADO' },
+        include: { procedimento: true }
+      });
+      const idsReverter = dispensadas
+        .filter((e) => isProcedimentoConsultaOuTeleconsulta(e.procedimento.nome))
+        .map((e) => e.id);
+      if (idsReverter.length > 0) {
+        await this.prisma.execucaoProcedimento.updateMany({
+          where: { id: { in: idsReverter } },
+          data: { status: 'PENDENTE' }
+        });
+      }
+    }
 
     // APAC: atualizar datas de início/encerramento da validade (Portaria 1640/2024 art. 15)
     // A data base inicial é a data do primeiro procedimento registrado (menor data entre todos)

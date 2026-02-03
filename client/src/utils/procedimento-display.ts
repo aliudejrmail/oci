@@ -28,7 +28,7 @@ export function getStatusExibicao(
   execucao: ExecucaoParaDisplay,
   todasExecucoes: ExecucaoParaDisplay[]
 ): string {
-  if (execucao.status === 'EXECUTADO' || execucao.status === 'CANCELADO') {
+  if (execucao.status === 'EXECUTADO' || execucao.status === 'CANCELADO' || execucao.status === 'DISPENSADO') {
     return execucao.status
   }
 

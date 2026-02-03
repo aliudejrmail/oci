@@ -305,7 +305,7 @@ model ExecucaoProcedimento {
   procedimentoId             String
   dataAgendamento            DateTime?
   dataExecucao               DateTime?
-  status                     String   // PENDENTE, AGENDADO, EXECUTADO, CANCELADO
+  status                     String   // PENDENTE, AGENDADO, EXECUTADO, CANCELADO, DISPENSADO
   observacoes                String?
   profissional               String?  // Nome do profissional que executou
   unidadeExecutora           String?
