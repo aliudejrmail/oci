@@ -139,8 +139,8 @@ export default function RegistroProcedimentosModal({
     setSucesso(null)
   }, [open, execucoes])
 
-  /** Pelo menos uma consulta médica especializada já está realizada (vindo do backend). */
-  const consultaJaRealizada = execucoes.some(
+  /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa para incluir EXECUTADO mesmo quando execucoes está filtrada (ex.: EXECUTANTE vê só agendados). */
+  const consultaJaRealizada = execucoesParaStatus.some(
     (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
   )
 
@@ -268,7 +268,7 @@ export default function RegistroProcedimentosModal({
     setSucesso(null)
 
     const procedimentosRealizados = procedimentos.filter(p => p.realizado)
-    const consultaJaRealizadaSubmit = execucoes.some(
+    const consultaJaRealizadaSubmit = execucoesParaStatus.some(
       (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'EXECUTADO'
     )
     const outrosRealizadosSemConsulta = procedimentosRealizados.some((p) => !p.ehConsultaEspecializada) && !consultaJaRealizadaSubmit
