@@ -10,15 +10,6 @@ import {
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
 
-/** Procedimentos de biópsia só podem ser REALIZADO após registro do resultado (nome contém "biópsia" ou "biopsia"). */
-function isProcedimentoBiopsia(nome: string): boolean {
-  const n = (nome || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // remove todos os acentos (ó -> o)
-  return n.includes('biopsia');
-}
-
 /** Consulta médica especializada (presencial ou teleconsulta): nome contém "consulta" e "especializada". */
 function isConsultaMedicaEspecializada(nome: string): boolean {
   const n = (nome || '')
@@ -611,18 +602,7 @@ export class SolicitacoesService {
       throw new Error('Execução não encontrada');
     }
 
-    const ehBiopsia = isProcedimentoBiopsia(execucaoAtual.procedimento.nome);
-    if (data.status === STATUS_EXECUCAO.REALIZADO && ehBiopsia) {
-      const resultadoInformado = (data.resultadoBiopsia ?? '').toString().trim();
-      const jaTinhaResultado = Boolean(execucaoAtual.resultadoBiopsia?.trim());
-      if (!resultadoInformado && !jaTinhaResultado) {
-        throw new Error(
-          'Procedimentos de biópsia só podem ser assinalados como realizado após o registro do resultado. Informe o resultado da biópsia antes de marcar como realizado.'
-        );
-      }
-    }
-
-    // Só permitir marcar outros procedimentos como EXECUTADO se a consulta médica especializada já tiver sido realizada
+    // Só permitir marcar outros procedimentos como REALIZADO se a consulta médica especializada já tiver sido realizada
     const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
     if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
       const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findUnique({
@@ -705,10 +685,6 @@ export class SolicitacoesService {
         dataAtualizacao.dataRegistroResultadoBiopsia = null;
       }
     }
-    if (data.status === STATUS_EXECUCAO.REALIZADO && ehBiopsia && dataAtualizacao.resultadoBiopsia && !dataAtualizacao.dataRegistroResultadoBiopsia) {
-      dataAtualizacao.dataRegistroResultadoBiopsia = new Date();
-    }
-    
     // Atualizar a execução
     const execucao = await this.prisma.execucaoProcedimento.update({
       where: { id },

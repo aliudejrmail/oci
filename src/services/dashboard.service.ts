@@ -1,6 +1,6 @@
 import { PrismaClient, StatusSolicitacao } from '@prisma/client';
 import { STATUS_EXECUCAO } from '../constants/status-execucao';
-import { dataFimCompetencia, dataLimiteRegistroOncologico, calcularDecimoDiaUtilMesSeguinte, calcularDiasRestantes, determinarNivelAlerta, calcularPrazoResultadoBiopsia, calcularPrazoResultadoBiopsiaOncologico } from '../utils/date.utils';
+import { dataFimCompetencia, dataLimiteRegistroOncologico, calcularDecimoDiaUtilMesSeguinte, calcularDiasRestantes, determinarNivelAlerta } from '../utils/date.utils';
 
 export class DashboardService {
   constructor(private prisma: PrismaClient) {}
@@ -216,66 +216,11 @@ export class DashboardService {
   }
 
   /**
-   * Alertas de resultado de biópsia pendente (coleta já registrada).
-   * OCI oncológica: prazo = 30 dias corridos a partir do registro da consulta médica especializada (1º procedimento).
-   * OCI geral: prazo = 30 dias a partir da data de coleta.
+   * Alertas de resultado de biópsia pendente.
+   * Desativado: biópsia exige apenas data de realização; data de resultado/coleta não é mais considerada.
    */
   async obterAlertasResultadoBiopsiaPendente() {
-    try {
-      const execucoes = await this.prisma.execucaoProcedimento.findMany({
-        where: {
-          dataColetaMaterialBiopsia: { not: null },
-          OR: [
-            { resultadoBiopsia: null },
-            { resultadoBiopsia: '' }
-          ],
-          status: { not: STATUS_EXECUCAO.REALIZADO },
-          solicitacao: {
-            status: {
-              notIn: [StatusSolicitacao.CONCLUIDA, StatusSolicitacao.CANCELADA]
-            }
-          }
-        },
-        include: {
-          solicitacao: {
-            include: {
-              paciente: { select: { id: true, nome: true, cpf: true } },
-              oci: { select: { id: true, codigo: true, nome: true, tipo: true } }
-            }
-          },
-          procedimento: { select: { id: true, nome: true, codigo: true } }
-        }
-      });
-
-      const alertas = execucoes.map((exec) => {
-        const dataColeta = exec.dataColetaMaterialBiopsia!;
-        const tipoOci = (exec.solicitacao.oci?.tipo ?? (exec.solicitacao as any).tipo ?? 'GERAL') as 'GERAL' | 'ONCOLOGICO';
-        // Oncológica: 30 dias desde o registro da consulta (1º procedimento); geral: 30 dias desde a coleta
-        const dataConsulta = (exec.solicitacao as any).dataInicioValidadeApac as Date | null | undefined;
-        const prazoResultado = tipoOci === 'ONCOLOGICO' && dataConsulta
-          ? calcularPrazoResultadoBiopsiaOncologico(dataConsulta)
-          : calcularPrazoResultadoBiopsia(tipoOci, dataColeta);
-        const diasRestantes = calcularDiasRestantes(prazoResultado);
-        const nivelAlerta = determinarNivelAlerta(diasRestantes, tipoOci);
-        return {
-          id: exec.id,
-          diasRestantes,
-          nivelAlerta,
-          prazoResultado,
-          tipoOci,
-          tipoPrazo: 'Resultado de biópsia',
-          dataColeta,
-          solicitacao: exec.solicitacao,
-          procedimento: exec.procedimento
-        };
-      });
-
-      alertas.sort((a, b) => a.diasRestantes - b.diasRestantes);
-      return alertas;
-    } catch (error: any) {
-      console.error('❌ Erro ao obter alertas de resultado biópsia pendente:', error);
-      return [];
-    }
+    return [];
   }
 
   async obterSolicitacoesProximasVencimento(limite: number = 10) {

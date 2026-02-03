@@ -706,19 +706,15 @@ export default function SolicitacaoDetalhes() {
                         ? 'bg-slate-100 text-slate-600'
                         : statusExibicao === 'AGENDADO'
                         ? 'bg-blue-100 text-blue-800'
-                        : execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia
-                        ? 'bg-amber-100 text-amber-800'
                         : 'bg-gray-100 text-gray-800'
                     }`}
-                    title={execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia ? 'Procedimento pendente por aguardo de resultado da biópsia' : statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
+                    title={statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
                   >
                     {statusExibicao === 'REALIZADO' && <CheckCircle size={10} />}
                     {statusExibicao === 'REALIZADO'
                       ? 'REALIZADO'
                       : statusExibicao === 'DISPENSADO'
                       ? 'DISPENSADO'
-                      : execucao.dataColetaMaterialBiopsia && !execucao.resultadoBiopsia
-                      ? 'Pendente – aguardando resultado'
                       : execucao.status}
                   </span>
                   {statusExibicao === 'REALIZADO' && (
@@ -730,11 +726,6 @@ export default function SolicitacaoDetalhes() {
                     <p className="text-xs text-blue-600 mt-0.5">
                       Agendado: {new Date(execucao.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                       {execucao.unidadeExecutora && ` • ${execucao.unidadeExecutora}`}
-                    </p>
-                  )}
-                  {execucao.dataColetaMaterialBiopsia && execucao.status !== 'REALIZADO' && (
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      Coleta: {formatarDataSemTimezone(execucao.dataColetaMaterialBiopsia)}
                     </p>
                   )}
                 </div>

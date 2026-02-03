@@ -111,18 +111,12 @@ export default function RegistroProcedimentosModal({
     /** Data do agendamento (YYYY-MM-DD), quando status foi AGENDADO; usada para restringir a data de execução */
     dataAgendamento: string
     dataExecucao: string
-    resultadoBiopsia: string
-    dataColetaMaterialBiopsia: string
-    dataRegistroResultadoBiopsia: string
     ehBiopsia: boolean
-    /** true apenas quando a coleta já foi registrada no backend (não é valor pré-preenchido no form) */
-    coletaRegistradaNoBackend: boolean
     /** true se for consulta médica em atenção especializada (presencial ou teleconsulta) */
     ehConsultaEspecializada: boolean
   }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [excluindo, setExcluindo] = useState<string | null>(null)
-  const [salvandoColeta, setSalvandoColeta] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
 
@@ -144,15 +138,6 @@ export default function RegistroProcedimentosModal({
       .map((exec) => {
       const ehBiopsia = isProcedimentoBiopsia(exec.procedimento.nome)
       const hoje = new Date().toISOString().split('T')[0]
-      // Data de coleta: só preencher se já foi registrada no backend; senão vazio (pendente de tudo)
-      const dataColeta = exec.dataColetaMaterialBiopsia
-        ? new Date(exec.dataColetaMaterialBiopsia).toISOString().split('T')[0]
-        : ''
-      const coletaRegistradaNoBackend = !!exec.dataColetaMaterialBiopsia
-      // Data do resultado: só preencher se já existir no backend; senão deixar vazio
-      const dataRegistro = exec.dataRegistroResultadoBiopsia
-        ? new Date(exec.dataRegistroResultadoBiopsia).toISOString().split('T')[0]
-        : ''
       const ehConsultaEspecializada = isConsultaMedicaEspecializada(exec.procedimento.nome)
       const dataAgendamentoStr = (exec as any).dataAgendamento
         ? new Date((exec as any).dataAgendamento).toISOString().split('T')[0]
@@ -170,11 +155,7 @@ export default function RegistroProcedimentosModal({
         dataExecucao: exec.dataExecucao
           ? new Date(exec.dataExecucao).toISOString().split('T')[0]
           : ehAgendado && dataAgendamentoStr ? dataAgendamentoStr : hoje,
-        resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
-        dataColetaMaterialBiopsia: dataColeta,
-        dataRegistroResultadoBiopsia: dataRegistro,
         ehBiopsia,
-        coletaRegistradaNoBackend,
         ehConsultaEspecializada
       }
     })
@@ -204,11 +185,7 @@ export default function RegistroProcedimentosModal({
       setErro('O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.')
       return
     }
-    // Biópsia: só permite marcar como realizado se o resultado estiver registrado
-    if (!proc.realizado && proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()) {
-      setErro('Procedimentos de biópsia só podem ser assinalados como realizado após o registro do resultado. Preencha o campo "Resultado da biópsia" abaixo.')
-      return
-    }
+    // Biópsia: apenas data de realização é necessária (resultado/coleta opcionais)
     setErro(null)
     novos[index].realizado = !novos[index].realizado
     if (!novos[index].realizado) {
@@ -224,52 +201,6 @@ export default function RegistroProcedimentosModal({
     const novos = [...procedimentos]
     novos[index].dataExecucao = data
     setProcedimentos(novos)
-  }
-
-  const handleResultadoBiopsiaChange = (index: number, value: string) => {
-    const novos = [...procedimentos]
-    novos[index].resultadoBiopsia = value
-    setProcedimentos(novos)
-    if (erro) setErro(null)
-  }
-
-  const handleDataColetaMaterialChange = (index: number, value: string) => {
-    const novos = [...procedimentos]
-    novos[index].dataColetaMaterialBiopsia = value
-    setProcedimentos(novos)
-  }
-
-  const handleDataRegistroResultadoChange = (index: number, value: string) => {
-    const novos = [...procedimentos]
-    novos[index].dataRegistroResultadoBiopsia = value
-    setProcedimentos(novos)
-  }
-
-  /** Registra apenas a data de coleta; procedimento permanece pendente por aguardo de resultado. */
-  const handleRegistrarColeta = async (index: number) => {
-    const proc = procedimentos[index]
-    if (!proc.ehBiopsia || !proc.dataColetaMaterialBiopsia) return
-
-    setSalvandoColeta(proc.execucaoId)
-    setErro(null)
-    try {
-      const dataColeta = proc.dataColetaMaterialBiopsia?.includes('T')
-        ? proc.dataColetaMaterialBiopsia.split('T')[0]
-        : proc.dataColetaMaterialBiopsia
-      const [ac, mc, dc] = (dataColeta || '').split('-').map(Number)
-      await api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, {
-        dataColetaMaterialBiopsia: new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
-      })
-      setSucesso('Data de coleta registrada. Procedimento permanece pendente por aguardo de resultado.')
-      setTimeout(() => {
-        onSuccess?.()
-        setSucesso(null)
-      }, 2000)
-    } catch (error: any) {
-      setErro(error.response?.data?.message || 'Erro ao registrar data de coleta.')
-    } finally {
-      setSalvandoColeta(null)
-    }
   }
 
   const handleExcluirExecucao = async (execucaoId: string, index: number) => {
@@ -324,35 +255,8 @@ export default function RegistroProcedimentosModal({
       return
     }
 
-    // Permitir salvar apenas data(s) de coleta (biópsia) sem marcar nenhum como realizado
     if (procedimentosRealizados.length === 0) {
-      const comColeta = procedimentos.filter(p => p.ehBiopsia && p.dataColetaMaterialBiopsia)
-      if (comColeta.length > 0) {
-        setSubmitting(true)
-        try {
-          const promises = comColeta.map(proc => {
-            const dataColeta = proc.dataColetaMaterialBiopsia?.includes('T')
-              ? proc.dataColetaMaterialBiopsia.split('T')[0]
-              : proc.dataColetaMaterialBiopsia
-            const [ac, mc, dc] = (dataColeta || '').split('-').map(Number)
-            return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, {
-              dataColetaMaterialBiopsia: new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
-            })
-          })
-          await Promise.all(promises)
-          setSucesso('Data(s) de coleta registrada(s). Procedimentos permanecem pendentes por aguardo de resultado.')
-          setTimeout(() => {
-            onSuccess?.()
-            onClose()
-          }, 2000)
-        } catch (error: any) {
-          setErro(error.response?.data?.message || 'Erro ao registrar data(s) de coleta.')
-        } finally {
-          setSubmitting(false)
-        }
-        return
-      }
-      setErro('Selecione pelo menos um procedimento como realizado ou preencha a data de coleta de biópsia para registrar (procedimento permanecerá pendente por aguardo de resultado).')
+      setErro('Selecione pelo menos um procedimento como realizado.')
       return
     }
 
@@ -375,12 +279,7 @@ export default function RegistroProcedimentosModal({
       return
     }
 
-    // Biópsia: exige resultado registrado antes de marcar como realizado
-    const biopsiaSemResultado = procedimentosRealizados.find(p => p.ehBiopsia && !(p.resultadoBiopsia ?? '').trim())
-    if (biopsiaSemResultado) {
-      setErro('Procedimentos de biópsia só podem ser assinalados como realizado após o registro do resultado. Preencha o campo "Resultado da biópsia".')
-      return
-    }
+    // Biópsia: apenas data de realização é necessária
 
     setSubmitting(true)
     try {
@@ -395,23 +294,7 @@ export default function RegistroProcedimentosModal({
           status: 'REALIZADO',
           dataExecucao: dataLocal.toISOString()
         }
-        if (proc.ehBiopsia && (proc.resultadoBiopsia ?? '').trim()) {
-          payload.resultadoBiopsia = proc.resultadoBiopsia.trim()
-          const dataColeta = proc.dataColetaMaterialBiopsia?.includes('T')
-            ? proc.dataColetaMaterialBiopsia.split('T')[0]
-            : proc.dataColetaMaterialBiopsia
-          if (dataColeta) {
-            const [ac, mc, dc] = dataColeta.split('-').map(Number)
-            payload.dataColetaMaterialBiopsia = new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
-          }
-          const dataReg = proc.dataRegistroResultadoBiopsia?.includes('T')
-            ? proc.dataRegistroResultadoBiopsia.split('T')[0]
-            : proc.dataRegistroResultadoBiopsia
-          if (dataReg) {
-            const [ar, mr, dr] = dataReg.split('-').map(Number)
-            payload.dataRegistroResultadoBiopsia = new Date(ar, mr - 1, dr, 12, 0, 0).toISOString()
-          }
-        }
+        // Biópsia: apenas status e dataExecucao (resultado/coleta opcionais)
 
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
@@ -528,7 +411,6 @@ export default function RegistroProcedimentosModal({
                         submitting ||
                         dispensado ||
                         !podeRegistrarPorData(proc) ||
-                        (proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()) ||
                         (!proc.ehConsultaEspecializada && !consultaJaRealizada)
                       }
                       title={
@@ -538,9 +420,7 @@ export default function RegistroProcedimentosModal({
                             ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
                             : !proc.ehConsultaEspecializada && !consultaJaRealizada
                               ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
-                              : proc.ehBiopsia && !(proc.resultadoBiopsia ?? '').trim()
-                                ? 'Preencha o resultado da biópsia abaixo para poder marcar como realizado'
-                                : undefined
+                              : undefined
                       }
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
                     />
@@ -573,79 +453,7 @@ export default function RegistroProcedimentosModal({
                       </p>
                     )}
 
-                    {/* Resultado da biópsia: exibido logo abaixo do procedimento (não na parte inferior do modal) */}
-                    {proc.ehBiopsia && (
-                      <div
-                        className="mt-2 ml-8 pl-3 border-l-2 border-blue-200 bg-blue-50/50 rounded-r py-2 pr-2 space-y-1.5"
-                        aria-label={`Resultado do procedimento: ${proc.nome}`}
-                      >
-                        <label className="block text-xs font-medium text-gray-700">
-                          Resultado da biópsia <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={proc.resultadoBiopsia}
-                          onChange={(e) => handleResultadoBiopsiaChange(index, e.target.value)}
-                          placeholder="Registre o resultado (laudo, conclusão) antes de marcar como realizado"
-                          rows={2}
-                          disabled={submitting}
-                          className="w-full text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-2 py-1.5 bg-white"
-                        />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[10px] text-gray-600 mb-0.5">Data de coleta de material para biópsia</label>
-                            <div className="relative">
-                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={12} />
-                              <input
-                                type="date"
-                                value={proc.dataColetaMaterialBiopsia}
-                                onChange={(e) => handleDataColetaMaterialChange(index, e.target.value)}
-                                disabled={submitting}
-                                max={new Date().toISOString().split('T')[0]}
-                                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-gray-600 mb-0.5">Data do resultado</label>
-                            <div className="relative">
-                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={12} />
-                              <input
-                                type="date"
-                                value={proc.dataRegistroResultadoBiopsia}
-                                onChange={(e) => handleDataRegistroResultadoChange(index, e.target.value)}
-                                disabled={submitting}
-                                max={new Date().toISOString().split('T')[0]}
-                                className="w-full pl-7 pr-2 py-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        {!(proc.resultadoBiopsia ?? '').trim() && (
-                          <p className="text-[10px] text-amber-700">Preencha o resultado acima para poder marcar como realizado.</p>
-                        )}
-                        {/* Registrar só a coleta: procedimento permanece pendente por aguardo de resultado */}
-                        {proc.dataColetaMaterialBiopsia && !(proc.resultadoBiopsia ?? '').trim() && !proc.realizado && (
-                          <div className="pt-1 border-t border-blue-200/50 mt-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleRegistrarColeta(index)}
-                              disabled={submitting || salvandoColeta === proc.execucaoId}
-                              className="text-xs px-2 py-1.5 rounded border border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Mantém o procedimento pendente por aguardo de resultado"
-                            >
-                              {salvandoColeta === proc.execucaoId ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></span>
-                                  Salvando...
-                                </span>
-                              ) : (
-                                'Registrar data de coleta (pendente – aguardando resultado)'
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Biópsia: apenas data de execução é necessária (como os demais procedimentos) */}
 
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (
@@ -709,13 +517,6 @@ export default function RegistroProcedimentosModal({
                         return (
                           <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-800">
                             Cancelado
-                          </span>
-                        )
-                      }
-                      if (proc.ehBiopsia && proc.coletaRegistradaNoBackend && !(proc.resultadoBiopsia ?? '').trim()) {
-                        return (
-                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-800" title="Procedimento pendente por aguardo de resultado da biópsia">
-                            Pendente – aguardando resultado
                           </span>
                         )
                       }
