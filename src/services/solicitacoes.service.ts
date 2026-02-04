@@ -5,7 +5,6 @@ import { gerarNumeroProtocolo } from '../utils/gerador-protocolo.utils';
 import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
-  obrigatoriosSatisfeitos,
   isProcedimentoAnatomoPatologico,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
@@ -518,6 +517,14 @@ export class SolicitacoesService {
     }
 
     if (status === StatusSolicitacao.CONCLUIDA && !solicitacao.dataConclusao) {
+      // Validação obrigatória: número de autorização APAC deve estar registrado
+      if (!solicitacao.numeroAutorizacaoApac) {
+        throw new Error(
+          'Não é possível marcar como concluída: é obrigatório registrar o número de autorização APAC antes da conclusão. ' +
+          'Use a opção "Registrar APAC" para informar o número de autorização.'
+        );
+      }
+
       // Só efetivar "Marcar concluída" se os procedimentos obrigatórios da OCI estiverem registrados como realizados
       const ociComProcedimentos = await this.prisma.oci.findUnique({
         where: { id: solicitacao.ociId },
@@ -988,29 +995,9 @@ export class SolicitacoesService {
         }
       }
 
-      // Conclusão: obrigatórios satisfeitos (grupo consulta/teleconsulta: basta 1 realizada; demais: todos)
-      let obrigatoriosOk = false;
-      if (ociComProcedimentos && ociComProcedimentos.procedimentos.length > 0) {
-        const procedimentosObrigatorios: ProcedimentoObrigatorio[] =
-          ociComProcedimentos.procedimentos.map((p) => ({
-            id: p.id,
-            codigo: p.codigo,
-            nome: p.nome
-          }));
-        const execucoesComProcedimento: ExecucaoParaValidacao[] = todasExecucoes.map((e) => ({
-          status: e.status,
-          procedimento: { id: e.procedimento.id, codigo: e.procedimento.codigo, nome: e.procedimento.nome }
-        }));
-        obrigatoriosOk = obrigatoriosSatisfeitos(procedimentosObrigatorios, execucoesComProcedimento);
-      } else {
-        // Fallback: sem obrigatórios na OCI, considerar concluída quando todos executados
-        obrigatoriosOk = sol.execucoes.every((e) => e.status === STATUS_EXECUCAO.REALIZADO);
-      }
-
-      if (obrigatoriosOk && sol.status !== StatusSolicitacao.CONCLUIDA) {
-        atualizar.dataConclusao = new Date();
-        atualizar.status = StatusSolicitacao.CONCLUIDA;
-      }
+      // Comentário: Conclusão automática removida - apenas conclusão manual é permitida
+      // A lógica de verificação de procedimentos obrigatórios foi removida pois
+      // a conclusão deve ser sempre manual, exigindo registro prévio do número APAC
     } else {
       // Se não há mais procedimentos executados, limpar as datas de validade APAC
       atualizar.dataInicioValidadeApac = null;
