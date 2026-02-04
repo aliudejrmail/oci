@@ -131,7 +131,9 @@ export default function AgendarModal({
       setErro('Selecione a unidade executante.')
       return
     }
-    const dataTimeISO = `${dataAgendamento}T${horaAgendamento}:00`
+    // Converte data+hora local do usuário para ISO UTC (evita diferença de horário no servidor)
+    const d = new Date(`${dataAgendamento}T${horaAgendamento}:00`)
+    const dataTimeISO = d.toISOString()
     setSubmitting(true)
     try {
       let sucessoCount = 0
