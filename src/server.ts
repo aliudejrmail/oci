@@ -39,6 +39,10 @@ if (isProduction) {
 
 const app = express();
 
+// Configurar trust proxy para funcionar em serviços como Render, Heroku, etc.
+// Isso permite ao Express identificar corretamente o IP real dos usuários através de proxies reversos
+app.set('trust proxy', true);
+
 // Headers de segurança (Helmet)
 app.use(helmet({ contentSecurityPolicy: false })); // CSP desabilitado para compatibilidade com SPA; ajustar se necessário
 
