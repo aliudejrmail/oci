@@ -85,7 +85,10 @@ export default function AgendarModal({
         const resUnidades = await api.get('/unidades-executantes?ativo=true')
         const listaUnidades = resUnidades.data ?? []
         setUnidades(listaUnidades)
-        if (listaUnidades.length > 0) setUnidadeExecutora(`${listaUnidades[0].cnes} - ${listaUnidades[0].nome}`)
+        if (listaUnidades.length > 0) {
+          setUnidadeExecutoraId(listaUnidades[0].id)
+          setUnidadeExecutora(`${listaUnidades[0].cnes} - ${listaUnidades[0].nome}`)
+        }
       } catch {
         setErro('Não foi possível carregar as unidades executantes.')
       } finally {
@@ -286,8 +289,18 @@ export default function AgendarModal({
               </label>
               <select
                 id="unidadeExecutora"
-                value={unidadeExecutora}
-                onChange={(e) => setUnidadeExecutora(e.target.value)}
+                value={unidadeExecutoraId}
+                onChange={(e) => {
+                  const val = e.target.value
+                  const u = unidades.find((un) => un.id === val)
+                  if (u) {
+                    setUnidadeExecutoraId(u.id)
+                    setUnidadeExecutora(`${u.cnes} - ${u.nome}`)
+                  } else {
+                    setUnidadeExecutoraId('')
+                    setUnidadeExecutora('')
+                  }
+                }}
                 required
                 disabled={loadingUnidades}
                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-60"

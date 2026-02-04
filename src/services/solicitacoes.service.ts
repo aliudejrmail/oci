@@ -128,7 +128,8 @@ export class SolicitacoesService {
         },
         execucoes: {
           include: {
-            procedimento: true
+            procedimento: true,
+            unidadeExecutoraRef: { select: { cnes: true, nome: true } }
           },
           orderBy: {
             procedimento: {
@@ -652,6 +653,20 @@ export class SolicitacoesService {
     // Normalizar datas para evitar problemas de timezone
     // Garantir que datas sejam interpretadas como início do dia no timezone local
     const dataAtualizacao: any = { ...data };
+
+    // Unidade executora: garantir que unidadeExecutora seja o nome (não UUID)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const unidadeExecutoraPareceUuid = data.unidadeExecutora && uuidRegex.test(String(data.unidadeExecutora).trim());
+    if (data.unidadeExecutoraId || unidadeExecutoraPareceUuid) {
+      const unidadeId = data.unidadeExecutoraId || (unidadeExecutoraPareceUuid ? data.unidadeExecutora?.trim() : null);
+      if (unidadeId) {
+        const unidade = await this.prisma.unidadeSaude.findUnique({ where: { id: unidadeId } });
+        if (unidade) {
+          dataAtualizacao.unidadeExecutora = `${unidade.cnes} - ${unidade.nome}`;
+          dataAtualizacao.unidadeExecutoraId = unidadeId;
+        }
+      }
+    }
     
     if (data.dataExecucao && typeof data.dataExecucao === 'string') {
       // Se vier como string ISO, extrair apenas a parte da data e criar Date local

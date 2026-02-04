@@ -688,7 +688,15 @@ export default function SolicitacaoDetalhes() {
                   {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
                     <p className="text-xs text-blue-600 mt-0.5">
                       Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
-                      {execucao.unidadeExecutora && ` • ${execucao.unidadeExecutora}`}
+                      {(() => {
+                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                        const nomeUnidade = execucao.unidadeExecutoraRef
+                          ? `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
+                          : (execucao.unidadeExecutora && !uuidRegex.test(execucao.unidadeExecutora.trim()))
+                            ? execucao.unidadeExecutora
+                            : null
+                        return nomeUnidade ? ` • ${nomeUnidade}` : ''
+                      })()}
                     </p>
                   )}
                 </div>

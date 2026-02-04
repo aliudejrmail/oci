@@ -119,6 +119,7 @@ async function main() {
   }
 
   // 3. ExecucaoProcedimento - unidadeExecutoraId
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
   const execucoesSemExecutoraId = await prisma.execucaoProcedimento.findMany({
     where: { unidadeExecutoraId: null },
     select: { id: true, unidadeExecutora: true }
@@ -126,6 +127,21 @@ async function main() {
 
   for (const exec of execucoesSemExecutoraId) {
     if (!exec.unidadeExecutora?.trim()) continue
+    // Caso unidadeExecutora contenha UUID (ID foi salvo no campo errado), corrigir
+    if (uuidRegex.test(exec.unidadeExecutora.trim())) {
+      const unidade = await prisma.unidadeSaude.findUnique({
+        where: { id: exec.unidadeExecutora.trim() },
+        select: { id: true, cnes: true, nome: true }
+      })
+      if (unidade) {
+        await prisma.execucaoProcedimento.update({
+          where: { id: exec.id },
+          data: { unidadeExecutoraId: unidade.id, unidadeExecutora: `${unidade.cnes} - ${unidade.nome}` }
+        })
+        atualizadosExecutora++
+      }
+      continue
+    }
     const cnes = extrairCnes(exec.unidadeExecutora)
     if (!cnes) continue
     const unidadeId = await buscarUnidadePorCnes(cnes)
