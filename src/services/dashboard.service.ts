@@ -1,7 +1,7 @@
 import { PrismaClient, StatusSolicitacao } from '@prisma/client';
 import { STATUS_EXECUCAO } from '../constants/status-execucao';
 import { dataFimCompetencia, dataLimiteRegistroOncologico, calcularDecimoDiaUtilMesSeguinte, calcularDiasRestantes, determinarNivelAlerta, calcularPrazoResultadoBiopsia, calcularPrazoResultadoBiopsiaOncologico } from '../utils/date.utils';
-import { isProcedimentoAnatomoPatologico } from '../utils/validacao-apac.utils';
+import { isProcedimentoAnatomoPatologico, obrigatoriosSatisfeitos, type ProcedimentoObrigatorio, type ExecucaoParaValidacao } from '../utils/validacao-apac.utils';
 
 export class DashboardService {
   constructor(private prisma: PrismaClient) {}
@@ -506,20 +506,26 @@ export class DashboardService {
           try {
             if (!sol.competenciaFimApac) return null;
             
-            // Verificar se ainda há procedimentos obrigatórios pendentes
+            // Verificar se ainda há procedimentos obrigatórios pendentes usando a função que trata grupo consulta/teleconsulta
             const procedimentosObrigatorios = sol.oci?.procedimentos || [];
             if (procedimentosObrigatorios.length > 0) {
-              // Verificar se todos os obrigatórios estão realizados
-              const todosRealizados = procedimentosObrigatorios.every(procObrig => {
-                // Verificar se este procedimento obrigatório tem uma execução REALIZADO
-                return sol.execucoes.some(exec => 
-                  exec.procedimento.id === procObrig.id && 
-                  exec.status === STATUS_EXECUCAO.REALIZADO
-                );
-              });
+              // Mapear para formato esperado pela função obrigatoriosSatisfeitos
+              const procedimentosParaValidacao: ProcedimentoObrigatorio[] = procedimentosObrigatorios.map(proc => ({
+                id: proc.id,
+                codigoSigtap: proc.codigoSigtap || '',
+                nomeSigtap: proc.nomeSigtap || ''
+              }));
 
-              // Se todos os obrigatórios já foram realizados, não mostrar alerta
-              if (todosRealizados) {
+              const execucoesParaValidacao: ExecucaoParaValidacao[] = sol.execucoes.map(exec => ({
+                procedimentoId: exec.procedimento.id,
+                status: exec.status,
+                procedimento: {
+                  codigoSigtap: exec.procedimento.codigoSigtap || ''
+                }
+              }));
+
+              // Se todos os obrigatórios já foram realizados/dispensados corretamente, não mostrar alerta
+              if (obrigatoriosSatisfeitos(procedimentosParaValidacao, execucoesParaValidacao)) {
                 return null;
               }
             }

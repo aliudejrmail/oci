@@ -5,6 +5,7 @@ import { gerarNumeroProtocolo } from '../utils/gerador-protocolo.utils';
 import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
+  obrigatoriosSatisfeitos,
   isProcedimentoAnatomoPatologico,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
@@ -418,7 +419,28 @@ export class SolicitacoesService {
                 id: true,
                 codigo: true,
                 nome: true,
-                tipo: true
+                tipo: true,
+                procedimentos: {
+                  where: { obrigatorio: true },
+                  select: {
+                    id: true,
+                    codigo: true,
+                    nome: true
+                  }
+                }
+              }
+            },
+            execucoes: {
+              select: {
+                id: true,
+                status: true,
+                procedimento: {
+                  select: {
+                    id: true,
+                    codigo: true,
+                    nome: true
+                  }
+                }
               }
             },
             alerta: true
@@ -435,11 +457,51 @@ export class SolicitacoesService {
       const solicitacoesComPrazoApac = solicitacoes.map((sol: any) => {
         try {
           if (sol.competenciaFimApac) {
+            // Verificar se todos os procedimentos obrigatórios estão satisfeitos
+            // Usar a função obrigatoriosSatisfeitos que trata corretamente o grupo consulta/teleconsulta
+            const procedimentosObrigatorios = sol.oci?.procedimentos || [];
+            let todosObrigatoriosRealizados = false;
+
+            if (procedimentosObrigatorios.length > 0) {
+              const procedimentosObrigatoriosMapeados: ProcedimentoObrigatorio[] = 
+                procedimentosObrigatorios.map((p: any) => ({
+                  id: p.id,
+                  codigo: p.codigo,
+                  nome: p.nome
+                }));
+
+              const execucoesMapeadas: ExecucaoParaValidacao[] = 
+                (sol.execucoes || []).map((e: any) => ({
+                  status: e.status,
+                  procedimento: {
+                    id: e.procedimento.id,
+                    codigo: e.procedimento.codigo,
+                    nome: e.procedimento.nome
+                  }
+                }));
+
+              todosObrigatoriosRealizados = obrigatoriosSatisfeitos(
+                procedimentosObrigatoriosMapeados,
+                execucoesMapeadas
+              );
+            }
+
             const prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(sol.competenciaFimApac);
             const tipoOci = sol.oci?.tipo ?? sol.tipo;
             const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
               : dataFimCompetencia(sol.competenciaFimApac);
+            
+            // Se todos obrigatórios estão satisfeitos, não exibir alerta de dias restantes
+            if (todosObrigatoriosRealizados) {
+              return {
+                ...sol,
+                prazoApresentacaoApac,
+                dataFimValidadeApac,
+                alerta: null // Remover alerta se todos obrigatórios foram satisfeitos
+              };
+            }
+
             const diasRestantesRegistro = calcularDiasRestantes(dataFimValidadeApac);
             const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, sol.oci?.tipo || 'GERAL');
             const alertaEnriquecido = sol.alerta
