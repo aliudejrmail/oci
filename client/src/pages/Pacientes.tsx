@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { Search, Plus } from 'lucide-react'
 import NovoPacienteModal from '../components/NovoPacienteModal'
+import { formatarDataSemTimezone } from '../utils/date-format'
 
 interface Paciente {
   id: string
@@ -115,7 +116,7 @@ export default function Pacientes() {
                       {paciente.cpf}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(paciente.dataNascimento).toLocaleDateString('pt-BR')}
+                      {formatarDataSemTimezone(paciente.dataNascimento)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {paciente.sexo}

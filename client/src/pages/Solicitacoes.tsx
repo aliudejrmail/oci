@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../services/api'
-import { format } from 'date-fns'
 import { Search, Plus, AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { formatarData } from '../utils/date-format'
 import NovaSolicitacaoModal from '../components/NovaSolicitacaoModal'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -314,11 +314,11 @@ export default function Solicitacoes() {
                         </div>
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
-                        {format(new Date(solicitacao.dataSolicitacao), 'dd/MM/yyyy')}
+                        {formatarData(solicitacao.dataSolicitacao)}
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
                         {solicitacao.dataAutorizacaoApac ? (
-                          format(new Date(solicitacao.dataAutorizacaoApac), 'dd/MM/yyyy')
+                          formatarData(solicitacao.dataAutorizacaoApac)
                         ) : (
                           <span className="text-gray-400 italic text-[10px]">Não informado</span>
                         )}
@@ -327,7 +327,7 @@ export default function Solicitacoes() {
                         {primeiroProcedimentoExecutado && solicitacao.competenciaFimApac && solicitacao.dataFimValidadeApac ? (
                           <>
                             <div className="text-xs text-gray-900 font-medium">
-                              Registro proc.: {format(new Date(solicitacao.dataFimValidadeApac), 'dd/MM/yyyy')}
+                              Registro proc.: {formatarData(solicitacao.dataFimValidadeApac)}
                             </div>
                             {alerta && (
                               <div className={`text-[10px] ${
@@ -338,14 +338,14 @@ export default function Solicitacoes() {
                             )}
                             <div className="text-[10px] text-gray-500 mt-0.5">
                               Apres. APAC: {solicitacao.prazoApresentacaoApac
-                                ? format(new Date(solicitacao.prazoApresentacaoApac), 'dd/MM/yyyy')
+                                ? formatarData(solicitacao.prazoApresentacaoApac)
                                 : '–'}
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="text-xs text-gray-900">
-                              {solicitacao.dataPrazo ? format(new Date(solicitacao.dataPrazo), 'dd/MM/yyyy') : '–'}
+                              {solicitacao.dataPrazo ? formatarData(solicitacao.dataPrazo) : '–'}
                             </div>
                             {alerta && (
                               <div className={`text-[10px] ${

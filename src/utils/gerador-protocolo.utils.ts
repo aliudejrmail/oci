@@ -9,6 +9,7 @@ export async function gerarNumeroProtocolo(prisma: any): Promise<string> {
   // Buscar último protocolo do dia
   const ultimaSolicitacao = await prisma.solicitacaoOci.findFirst({
     where: {
+      deletedAt: null,
       numeroProtocolo: {
         startsWith: prefixo
       }

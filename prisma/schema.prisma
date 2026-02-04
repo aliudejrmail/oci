@@ -31,12 +31,21 @@ enum TipoProcedimento {
   OUTRO
 }
 
+enum TipoUsuario {
+  ADMIN
+  GESTOR
+  ATENDENTE
+  EXECUTANTE
+  AUTORIZADOR
+  SOLICITANTE
+}
+
 model Usuario {
   id                   String   @id @default(uuid())
   nome                 String
   email                String   @unique
   senha                String
-  tipo                 String   // ADMIN, GESTOR, ATENDENTE, EXECUTANTE, AUTORIZADOR, SOLICITANTE
+  tipo                 TipoUsuario
   ativo                Boolean  @default(true)
   unidadeId            String?  // Unidade de lotação/vinculação (qualquer perfil)
   unidadeExecutanteId  String?  // Unidade onde o executante atua (só para tipo EXECUTANTE)
@@ -93,8 +102,11 @@ model UnidadeSaude {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  usuarios           Usuario[] @relation("Unidade")           // Usuários vinculados à unidade (lotação)
-  usuariosExecutantes Usuario[] @relation("UnidadeExecutante") // Executantes que atuam nesta unidade
+  usuarios              Usuario[] @relation("Unidade")           // Usuários vinculados à unidade (lotação)
+  usuariosExecutantes   Usuario[] @relation("UnidadeExecutante") // Executantes que atuam nesta unidade
+  solicitacoesOrigem   SolicitacaoOci[] @relation("UnidadeOrigem")
+  solicitacoesDestino  SolicitacaoOci[] @relation("UnidadeDestino")
+  execucoesExecutadas  ExecucaoProcedimento[] @relation("UnidadeExecutora")
 
   @@index([nome])
   @@index([executante])
@@ -151,6 +163,7 @@ model ProcedimentoOci {
   compatibilidadeCid CompatibilidadeCid[]
   compatibilidadeCbo CompatibilidadeCbo[]
 
+  @@unique([ociId, codigo])
   @@map("procedimentos_oci")
 }
 
@@ -246,8 +259,11 @@ model SolicitacaoOci {
   dataConclusao        DateTime?
   status               StatusSolicitacao @default(PENDENTE)
   observacoes          String?
-  unidadeOrigem        String // UBS que solicitou
-  unidadeDestino       String? // Unidade que executará
+  unidadeOrigem        String // UBS que solicitou (legado/display)
+  unidadeDestino       String? // Unidade que executará (legado/display)
+  unidadeOrigemId      String? // FK para UnidadeSaude
+  unidadeDestinoId     String? // FK para UnidadeSaude
+  deletedAt            DateTime? // Soft delete para auditoria
   // APAC - validade 2 competências (Portaria SAES 1640/2024, Manual PMAE/OCI)
   competenciaInicioApac    String?  // YYYYMM ex.: 202601
   competenciaFimApac       String?  // YYYYMM ex.: 202602
@@ -270,17 +286,24 @@ model SolicitacaoOci {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
-  paciente      Paciente               @relation(fields: [pacienteId], references: [id])
-  oci           Oci                    @relation(fields: [ociId], references: [id])
-  criadoPor     Usuario                @relation("CriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoPor Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
-  execucoes     ExecucaoProcedimento[]
-  alerta        AlertaPrazo?           @relation("Alertas")
-  anexos        AnexoSolicitacao[]
+  paciente         Paciente               @relation(fields: [pacienteId], references: [id])
+  oci              Oci                    @relation(fields: [ociId], references: [id])
+  criadoPor        Usuario                @relation("CriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoPor    Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
+  unidadeOrigemRef UnidadeSaude?          @relation("UnidadeOrigem", fields: [unidadeOrigemId], references: [id], onDelete: SetNull)
+  unidadeDestinoRef UnidadeSaude?         @relation("UnidadeDestino", fields: [unidadeDestinoId], references: [id], onDelete: SetNull)
+  execucoes        ExecucaoProcedimento[]
+  alerta           AlertaPrazo?           @relation("Alertas")
+  anexos           AnexoSolicitacao[]
 
   @@index([status])
   @@index([dataPrazo])
   @@index([dataSolicitacao])
+  @@index([status, dataSolicitacao(sort: Desc)])
+  @@index([tipo, status])
+  @@index([unidadeOrigem])
+  @@index([competenciaFimApac])
+  @@index([deletedAt])
   @@map("solicitacoes_oci")
 }
 
@@ -316,7 +339,8 @@ model ExecucaoProcedimento {
   status                     String   // FK: PENDENTE, AGENDADO, REALIZADO, CANCELADO, DISPENSADO
   observacoes                String?
   profissional               String?  // Nome do profissional que executou
-  unidadeExecutora           String?
+  unidadeExecutora           String?  // Legado/display
+  unidadeExecutoraId         String?  // FK para UnidadeSaude
   executanteId               String?  // Usuário executante (tipo EXECUTANTE) para quem foi agendado
   // Biópsia: só pode ser REALIZADO após registro do resultado
   resultadoBiopsia           String?
@@ -325,14 +349,17 @@ model ExecucaoProcedimento {
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
-  solicitacao  SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
-  procedimento ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
-  executante   Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
-  statusExecucao StatusExecucao @relation(fields: [status], references: [codigo], onDelete: Restrict)
+  solicitacao       SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  procedimento     ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
+  executante       Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
+  unidadeExecutoraRef UnidadeSaude? @relation("UnidadeExecutora", fields: [unidadeExecutoraId], references: [id], onDelete: SetNull)
+  statusExecucao   StatusExecucao @relation(fields: [status], references: [codigo], onDelete: Restrict)
 
   @@index([solicitacaoId])
   @@index([status])
   @@index([executanteId])
+  @@index([unidadeExecutora])
+  @@index([solicitacaoId, status])
   @@map("execucoes_procedimentos")
 }
 

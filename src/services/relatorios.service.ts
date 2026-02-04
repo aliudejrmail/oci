@@ -10,7 +10,7 @@ export type FiltrosRelatorio = {
 };
 
 function buildWhere(filtros: FiltrosRelatorio) {
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { deletedAt: null };
   if (filtros.dataInicio || filtros.dataFim) {
     where.dataSolicitacao = {};
     if (filtros.dataInicio) {
@@ -23,8 +23,8 @@ function buildWhere(filtros: FiltrosRelatorio) {
   if (filtros.status) where.status = filtros.status;
   if (filtros.unidadeId) {
     where.OR = [
-      { unidadeOrigem: filtros.unidadeId },
-      { unidadeDestino: filtros.unidadeId }
+      { unidadeOrigemId: filtros.unidadeId },
+      { unidadeDestinoId: filtros.unidadeId }
     ];
   }
   if (filtros.tipoOci) where.tipo = filtros.tipoOci;
@@ -156,21 +156,26 @@ export class RelatoriosService {
         (whereExecucao.dataExecucao as Record<string, Date>).lte = new Date(filtros.dataFim + 'T23:59:59.999');
       }
     }
-    // Filtro na solicitação: apenas status, unidade e tipo OCI (data do relatório é da execução)
-    const whereSolicitacao: Record<string, unknown> = {};
-    if (filtros.status) whereSolicitacao.status = filtros.status;
+    // Filtro na solicitação: status, unidade (origem, destino ou executora) e tipo OCI
+    const whereSolicitacaoBase: Record<string, unknown> = { deletedAt: null };
+    if (filtros.status) whereSolicitacaoBase.status = filtros.status;
+    if (filtros.tipoOci) whereSolicitacaoBase.tipo = filtros.tipoOci;
+
+    let whereExecucaoCompleto: Record<string, unknown> = {
+      ...whereExecucao,
+      solicitacao: whereSolicitacaoBase
+    };
     if (filtros.unidadeId) {
-      whereSolicitacao.OR = [
-        { unidadeOrigem: filtros.unidadeId },
-        { unidadeDestino: filtros.unidadeId }
-      ];
+      whereExecucaoCompleto = {
+        OR: [
+          { ...whereExecucao, unidadeExecutoraId: filtros.unidadeId, solicitacao: whereSolicitacaoBase },
+          { ...whereExecucao, solicitacao: { ...whereSolicitacaoBase, unidadeOrigemId: filtros.unidadeId } },
+          { ...whereExecucao, solicitacao: { ...whereSolicitacaoBase, unidadeDestinoId: filtros.unidadeId } }
+        ]
+      };
     }
-    if (filtros.tipoOci) whereSolicitacao.tipo = filtros.tipoOci;
     const execucoes = await this.prisma.execucaoProcedimento.findMany({
-      where: {
-        ...whereExecucao,
-        solicitacao: whereSolicitacao
-      },
+      where: whereExecucaoCompleto,
       take: limite,
       orderBy: { dataExecucao: 'desc' },
       include: {
@@ -185,10 +190,7 @@ export class RelatoriosService {
       }
     });
     const total = await this.prisma.execucaoProcedimento.count({
-      where: {
-        ...whereExecucao,
-        solicitacao: whereSolicitacao
-      }
+      where: whereExecucaoCompleto
     });
     return { total, execucoes, limite };
   }

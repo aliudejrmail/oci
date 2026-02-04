@@ -23,6 +23,7 @@ interface UnidadeOption {
   cnes: string
   nome: string
   ativo: boolean
+  executante?: number
 }
 
 interface NovaSolicitacaoModalProps {
@@ -37,7 +38,9 @@ const formInicial = {
   ociId: '',
   ociBusca: '',
   unidadeOrigem: '',
+  unidadeOrigemId: '',
   unidadeDestino: '',
+  unidadeDestinoId: '',
   observacoes: ''
 }
 
@@ -94,12 +97,14 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
   const valorUnidadeSolicitante = usuario?.unidade
     ? `${usuario.unidade.cnes} - ${usuario.unidade.nome}`
     : ''
+  const unidadeSolicitanteId = usuario?.unidade?.id ?? ''
 
   useEffect(() => {
     if (!open) return
     const estadoInicial = {
       ...formInicial,
-      unidadeOrigem: valorUnidadeSolicitante
+      unidadeOrigem: valorUnidadeSolicitante,
+      unidadeOrigemId: unidadeSolicitanteId
     }
     setForm(estadoInicial)
     setArquivosPdf([])
@@ -129,9 +134,9 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
 
   useEffect(() => {
     if (open && valorUnidadeSolicitante) {
-      setForm((f) => ({ ...f, unidadeOrigem: valorUnidadeSolicitante }))
+      setForm((f) => ({ ...f, unidadeOrigem: valorUnidadeSolicitante, unidadeOrigemId: unidadeSolicitanteId }))
     }
-  }, [open, valorUnidadeSolicitante])
+  }, [open, valorUnidadeSolicitante, unidadeSolicitanteId])
 
   const handleChange = (campo: string, valor: string) => {
     setForm((f) => {
@@ -263,7 +268,9 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
         pacienteId: form.pacienteId,
         ociId: form.ociId,
         unidadeOrigem: form.unidadeOrigem.trim(),
+        unidadeOrigemId: form.unidadeOrigemId || undefined,
         unidadeDestino: form.unidadeDestino.trim() || undefined,
+        unidadeDestinoId: form.unidadeDestinoId || undefined,
         observacoes: form.observacoes.trim() || undefined
       })
       
@@ -467,8 +474,18 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-0.5">Unidade Solicitante *</label>
                 <select
-                  value={form.unidadeOrigem}
-                  onChange={(e) => handleChange('unidadeOrigem', e.target.value)}
+                  value={form.unidadeOrigemId}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const u = unidades.find((un) => un.id === val)
+                    if (u) {
+                      setForm((f) => ({
+                        ...f,
+                        unidadeOrigem: `${u.cnes} - ${u.nome}`,
+                        unidadeOrigemId: u.id
+                      }))
+                    }
+                  }}
                   className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
                   required
                 >
@@ -476,7 +493,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                   {unidades.map((u) => {
                     const valor = `${u.cnes} - ${u.nome}`
                     return (
-                      <option key={u.id} value={valor}>
+                      <option key={u.id} value={u.id}>
                         {valor}
                       </option>
                     )
@@ -485,13 +502,29 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-0.5">Unidade de destino (opcional)</label>
-                <input
-                  type="text"
-                  value={form.unidadeDestino}
-                  onChange={(e) => handleChange('unidadeDestino', e.target.value)}
-                  placeholder="Ex.: Unidade Executante (Hospital Regional)"
+                <select
+                  value={form.unidadeDestinoId}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const u = unidades.find((un) => un.id === val)
+                    setForm((f) => ({
+                      ...f,
+                      unidadeDestino: u ? `${u.cnes} - ${u.nome}` : '',
+                      unidadeDestinoId: val || ''
+                    }))
+                  }}
                   className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                />
+                >
+                  <option value="">Nenhuma</option>
+                  {((unidades as UnidadeOption[]).filter((u) => u.executante === 1).length > 0
+                    ? (unidades as UnidadeOption[]).filter((u) => u.executante === 1)
+                    : unidades
+                  ).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.cnes} - {u.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-0.5">Observações (opcional)</label>

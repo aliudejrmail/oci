@@ -16,19 +16,24 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       let unidadeOrigem = req.body.unidadeOrigem as string | undefined;
+      let unidadeOrigemId: string | undefined;
+      let unidadeDestinoId = req.body.unidadeDestinoId as string | undefined;
       // Usuário de unidade solicitante: só pode criar solicitações com sua unidade como origem (ADMIN pode escolher)
       if (req.userId && (req as AuthRequest).userTipo !== 'ADMIN') {
         const usuario = await prisma.usuario.findUnique({
           where: { id: req.userId },
-          select: { unidadeId: true, unidade: { select: { cnes: true, nome: true, solicitante: true } } }
+          select: { unidadeId: true, unidade: { select: { id: true, cnes: true, nome: true, solicitante: true } } }
         });
         if (usuario?.unidadeId && usuario.unidade?.solicitante === 1) {
           unidadeOrigem = `${usuario.unidade.cnes} - ${usuario.unidade.nome}`;
+          unidadeOrigemId = usuario.unidadeId;
         }
       }
       const solicitacao = await service.criarSolicitacao({
         ...req.body,
         unidadeOrigem: unidadeOrigem ?? req.body.unidadeOrigem,
+        unidadeOrigemId: unidadeOrigemId ?? req.body.unidadeOrigemId,
+        unidadeDestinoId: unidadeDestinoId ?? req.body.unidadeDestinoId,
         criadoPorId: req.userId!
       });
       res.status(201).json(solicitacao);
@@ -165,7 +170,7 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const { observacoes, unidadeOrigem, unidadeDestino, ociId } = req.body;
+      const { observacoes, unidadeOrigem, unidadeDestino, unidadeOrigemId, unidadeDestinoId, ociId } = req.body;
 
       if (!id || typeof id !== 'string') {
         return res.status(400).json({ message: 'ID da solicitação é obrigatório' });
@@ -206,6 +211,8 @@ export class SolicitacoesController {
         observacoes,
         unidadeOrigem: unidadeOrigemFinal,
         unidadeDestino,
+        unidadeOrigemId,
+        unidadeDestinoId,
         ociId
       });
 
@@ -297,8 +304,8 @@ export class SolicitacoesController {
       if (!files || files.length === 0) {
         return res.status(400).json({ message: 'Nenhum arquivo enviado.' });
       }
-      const solicitacao = await prisma.solicitacaoOci.findUnique({
-        where: { id: solicitacaoId }
+      const solicitacao = await prisma.solicitacaoOci.findFirst({
+        where: { id: solicitacaoId, deletedAt: null }
       });
       if (!solicitacao) {
         return res.status(404).json({ message: 'Solicitação não encontrada.' });
@@ -337,8 +344,8 @@ export class SolicitacoesController {
       const { id: solicitacaoId, anexoId } = req.params;
       
       // Verificar se a solicitação existe
-      const solicitacao = await prisma.solicitacaoOci.findUnique({
-        where: { id: solicitacaoId }
+      const solicitacao = await prisma.solicitacaoOci.findFirst({
+        where: { id: solicitacaoId, deletedAt: null }
       });
       if (!solicitacao) {
         return res.status(404).json({ message: 'Solicitação não encontrada.' });
@@ -380,8 +387,8 @@ export class SolicitacoesController {
   async removerAnexo(req: AuthRequest, res: Response) {
     try {
       const { id: solicitacaoId, anexoId } = req.params;
-      const solicitacao = await prisma.solicitacaoOci.findUnique({
-        where: { id: solicitacaoId }
+      const solicitacao = await prisma.solicitacaoOci.findFirst({
+        where: { id: solicitacaoId, deletedAt: null }
       });
       if (!solicitacao) {
         return res.status(404).json({ message: 'Solicitação não encontrada.' });

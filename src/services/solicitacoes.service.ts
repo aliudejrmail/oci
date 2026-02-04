@@ -33,6 +33,8 @@ export class SolicitacoesService {
     observacoes?: string;
     unidadeOrigem: string;
     unidadeDestino?: string;
+    unidadeOrigemId?: string;
+    unidadeDestinoId?: string;
     criadoPorId: string;
   }) {
     // Buscar OCI para obter tipo e prazo
@@ -65,54 +67,56 @@ export class SolicitacoesService {
     const competenciaInicioApac = null; // Será calculado quando o primeiro procedimento for executado
     const competenciaFimApac = null; // Será calculado quando o primeiro procedimento for executado
 
-    // Criar solicitação
-    // tipoApac = "3" (APAC Única, não admite continuidade) conforme Manual PMAE/OCI
-    const solicitacao = await this.prisma.solicitacaoOci.create({
-      data: {
-        numeroProtocolo,
-        pacienteId: data.pacienteId,
-        ociId: data.ociId,
-        tipo: oci.tipo,
-        dataSolicitacao,
-        dataPrazo,
-        competenciaInicioApac,
-        competenciaFimApac,
-        tipoApac: '3', // APAC Única conforme Manual PMAE/OCI
-        observacoes: data.observacoes,
-        unidadeOrigem: data.unidadeOrigem,
-        unidadeDestino: data.unidadeDestino,
-        criadoPorId: data.criadoPorId,
-        status: StatusSolicitacao.PENDENTE
-      }
-    });
-
-    // Criar execuções apenas para procedimentos da tabela SIGTAP (codigoSigtap preenchido)
-    if (procedimentosSigtap.length > 0) {
-      await this.prisma.execucaoProcedimento.createMany({
-        data: procedimentosSigtap.map((proc) => ({
-          solicitacaoId: solicitacao.id,
-          procedimentoId: proc.id,
-          status: STATUS_EXECUCAO.PENDENTE
-        }))
+    const solicitacao = await this.prisma.$transaction(async (tx) => {
+      const sol = await tx.solicitacaoOci.create({
+        data: {
+          numeroProtocolo,
+          pacienteId: data.pacienteId,
+          ociId: data.ociId,
+          tipo: oci.tipo,
+          dataSolicitacao,
+          dataPrazo,
+          competenciaInicioApac,
+          competenciaFimApac,
+          tipoApac: '3', // APAC Única conforme Manual PMAE/OCI
+          observacoes: data.observacoes,
+          unidadeOrigem: data.unidadeOrigem,
+          unidadeDestino: data.unidadeDestino,
+          unidadeOrigemId: data.unidadeOrigemId,
+          unidadeDestinoId: data.unidadeDestinoId,
+          criadoPorId: data.criadoPorId,
+          status: StatusSolicitacao.PENDENTE
+        }
       });
-    }
 
-    // Criar alerta inicial
-    const diasRestantes = calcularDiasRestantes(dataPrazo);
-    await this.prisma.alertaPrazo.create({
-      data: {
-        solicitacaoId: solicitacao.id,
-        diasRestantes,
-        nivelAlerta: determinarNivelAlerta(diasRestantes, oci.tipo)
+      if (procedimentosSigtap.length > 0) {
+        await tx.execucaoProcedimento.createMany({
+          data: procedimentosSigtap.map((proc) => ({
+            solicitacaoId: sol.id,
+            procedimentoId: proc.id,
+            status: STATUS_EXECUCAO.PENDENTE
+          }))
+        });
       }
+
+      const diasRestantes = calcularDiasRestantes(dataPrazo);
+      await tx.alertaPrazo.create({
+        data: {
+          solicitacaoId: sol.id,
+          diasRestantes,
+          nivelAlerta: determinarNivelAlerta(diasRestantes, oci.tipo)
+        }
+      });
+
+      return sol;
     });
 
     return await this.buscarSolicitacaoPorId(solicitacao.id);
   }
 
   async buscarSolicitacaoPorId(id: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
-      where: { id },
+    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+      where: { id, deletedAt: null },
       include: {
         paciente: true,
         oci: {
@@ -186,6 +190,8 @@ export class SolicitacoesService {
     observacoes?: string | null;
     unidadeOrigem?: string;
     unidadeDestino?: string | null;
+    unidadeOrigemId?: string | null;
+    unidadeDestinoId?: string | null;
     ociId?: string;
   }) {
     // Validar campos obrigatórios
@@ -193,8 +199,8 @@ export class SolicitacoesService {
       throw new Error('Unidade de origem é obrigatória');
     }
 
-    const solicitacaoAtual = await this.prisma.solicitacaoOci.findUnique({
-      where: { id },
+    const solicitacaoAtual = await this.prisma.solicitacaoOci.findFirst({
+      where: { id, deletedAt: null },
       include: { execucoes: true, oci: true }
     });
 
@@ -213,7 +219,6 @@ export class SolicitacoesService {
         );
       }
 
-      // Buscar nova OCI com procedimentos SIGTAP
       const novaOci = await this.prisma.oci.findUnique({
         where: { id: data.ociId },
         include: { procedimentos: { where: { codigoSigtap: { not: null } }, orderBy: { ordem: 'asc' } } }
@@ -228,56 +233,56 @@ export class SolicitacoesService {
         throw new Error('A OCI selecionada não possui procedimentos da tabela SIGTAP.');
       }
 
-      // Remover execuções antigas
-      await this.prisma.execucaoProcedimento.deleteMany({ where: { solicitacaoId: id } });
-
-      // Recalcular data de prazo conforme novo tipo de OCI
       const dataSolicitacao = solicitacaoAtual.dataSolicitacao;
       const dataPrazo = calcularDataPrazo(novaOci.tipo, dataSolicitacao);
       const diasRestantes = calcularDiasRestantes(dataPrazo);
       const nivelAlerta = determinarNivelAlerta(diasRestantes, novaOci.tipo);
 
-      // Atualizar solicitação (ociId, tipo, dataPrazo e demais campos)
-      await this.prisma.solicitacaoOci.update({
-        where: { id },
-        data: {
-          ociId: data.ociId,
-          tipo: novaOci.tipo,
-          dataPrazo,
-          observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
-          unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
-          unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
-          updatedAt: new Date()
-        }
-      });
+      await this.prisma.$transaction(async (tx) => {
+        await tx.execucaoProcedimento.deleteMany({ where: { solicitacaoId: id } });
 
-      // Criar novas execuções para os procedimentos da nova OCI
-      await this.prisma.execucaoProcedimento.createMany({
-        data: procedimentosSigtap.map((proc) => ({
-          solicitacaoId: id,
-          procedimentoId: proc.id,
-          status: STATUS_EXECUCAO.PENDENTE
-        }))
-      });
+        await tx.solicitacaoOci.update({
+          where: { id },
+          data: {
+            ociId: data.ociId,
+            tipo: novaOci.tipo,
+            dataPrazo,
+            observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
+            unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
+            unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
+            unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
+            unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
+            updatedAt: new Date()
+          }
+        });
 
-      // Atualizar ou criar alerta de prazo
-      await this.prisma.alertaPrazo.upsert({
-        where: { solicitacaoId: id },
-        update: { diasRestantes, nivelAlerta },
-        create: {
-          solicitacaoId: id,
-          diasRestantes,
-          nivelAlerta
-        }
+        await tx.execucaoProcedimento.createMany({
+          data: procedimentosSigtap.map((proc) => ({
+            solicitacaoId: id,
+            procedimentoId: proc.id,
+            status: STATUS_EXECUCAO.PENDENTE
+          }))
+        });
+
+        await tx.alertaPrazo.upsert({
+          where: { solicitacaoId: id },
+          update: { diasRestantes, nivelAlerta },
+          create: {
+            solicitacaoId: id,
+            diasRestantes,
+            nivelAlerta
+          }
+        });
       });
     } else {
-      // Apenas atualizar campos editáveis (sem troca de OCI)
       await this.prisma.solicitacaoOci.update({
         where: { id },
         data: {
           observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
           unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
           unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
+          unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
+          unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
           updatedAt: new Date()
         }
       });
@@ -308,7 +313,7 @@ export class SolicitacoesService {
       const limit = filtros.limit || 20;
       const skip = (page - 1) * limit;
 
-      const where: any = {};
+      const where: any = { deletedAt: null };
 
       // Filtro por execuções: executante (perfil EXECUTANTE) e/ou unidade executante (agendamentos na unidade)
       const execucoesFilter: any = {};
@@ -454,8 +459,8 @@ export class SolicitacoesService {
     atualizadoPorId: string,
     justificativaCancelamento?: string
   ) {
-    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
-      where: { id },
+    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+      where: { id, deletedAt: null },
       include: { oci: true }
     });
 
@@ -537,8 +542,8 @@ export class SolicitacoesService {
   }
 
   async atualizarAlertaPrazo(solicitacaoId: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
-      where: { id: solicitacaoId },
+    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+      where: { id: solicitacaoId, deletedAt: null },
       include: { oci: true }
     });
 
@@ -588,6 +593,7 @@ export class SolicitacoesService {
       observacoes?: string;
       profissional?: string;
       unidadeExecutora?: string;
+      unidadeExecutoraId?: string | null;
       executanteId?: string | null;
       resultadoBiopsia?: string | null;
       dataColetaMaterialBiopsia?: Date | string | null;
@@ -619,8 +625,8 @@ export class SolicitacoesService {
     // Só permitir marcar outros procedimentos como REALIZADO se a consulta médica especializada já tiver sido realizada
     const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
     if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
-      const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findUnique({
-        where: { id: execucaoAtual.solicitacaoId },
+      const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findFirst({
+        where: { id: execucaoAtual.solicitacaoId, deletedAt: null },
         include: {
           execucoes: {
             include: { procedimento: true }
@@ -751,8 +757,8 @@ export class SolicitacoesService {
     // APAC: atualizar datas de início/encerramento da validade (Portaria 1640/2024 art. 15)
     // A data base inicial é a data do primeiro procedimento registrado (menor data entre todos)
     // Recalcular sempre que uma execução é atualizada (marcada ou desmarcada)
-    const sol = await this.prisma.solicitacaoOci.findUnique({
-      where: { id: execucao.solicitacaoId },
+    const sol = await this.prisma.solicitacaoOci.findFirst({
+      where: { id: execucao.solicitacaoId, deletedAt: null },
       include: { execucoes: true }
     });
     if (!sol) return execucao;
@@ -940,8 +946,8 @@ export class SolicitacoesService {
   }
 
   async excluirSolicitacao(id: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
-      where: { id },
+    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+      where: { id, deletedAt: null },
       include: {
         execucoes: {
           select: {
@@ -977,9 +983,10 @@ export class SolicitacoesService {
       );
     }
 
-    // Excluir em cascata: anexos, execuções, alerta serão removidos automaticamente
-    await this.prisma.solicitacaoOci.delete({
-      where: { id }
+    // Soft delete: marca como excluída para auditoria (anexos e execuções permanecem)
+    await this.prisma.solicitacaoOci.update({
+      where: { id },
+      data: { deletedAt: new Date() }
     });
 
     return { message: 'Solicitação excluída com sucesso' };
@@ -998,8 +1005,8 @@ export class SolicitacoesService {
       cidSecundario?: string | null;
     }
   ) {
-    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
-      where: { id },
+    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+      where: { id, deletedAt: null },
       include: { oci: true }
     });
 

@@ -7,7 +7,7 @@ export class DashboardService {
   constructor(private prisma: PrismaClient) {}
 
   async obterEstatisticas(periodo?: { inicio: Date; fim: Date }) {
-    const where: any = {};
+    const where: any = { deletedAt: null };
     if (periodo) {
       where.dataSolicitacao = {
         gte: periodo.inicio,

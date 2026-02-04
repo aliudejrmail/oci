@@ -12,8 +12,8 @@ import {
   Bell
 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
+import { formatarData } from '../utils/date-format'
 
 interface Estatisticas {
   totalSolicitacoes: number
@@ -247,11 +247,11 @@ export default function Dashboard() {
               // Dias restantes referem-se à data limite de REGISTRO/REALIZAÇÃO de procedimentos
               const dataLimiteRegistro = alerta.dataFimValidadeApac
               const prazoExibir = dataLimiteRegistro
-                ? format(new Date(dataLimiteRegistro), 'dd/MM/yyyy')
+                ? formatarData(dataLimiteRegistro)
                 : alerta.prazoRelevante 
-                  ? format(new Date(alerta.prazoRelevante), 'dd/MM/yyyy')
+                  ? formatarData(alerta.prazoRelevante)
                   : alerta.solicitacao?.dataPrazo 
-                    ? format(new Date(alerta.solicitacao.dataPrazo), 'dd/MM/yyyy')
+                    ? formatarData(alerta.solicitacao.dataPrazo)
                     : '-'
               const tipoPrazoExibir = dataLimiteRegistro ? 'Data limite registro procedimentos' : (alerta.tipoPrazo || 'Prazo')
               const labelDiasRestantes = dataLimiteRegistro ? 'para registro de procedimentos' : ''
@@ -281,7 +281,7 @@ export default function Dashboard() {
                       </p>
                       {alerta.prazoApresentacaoApac && dataLimiteRegistro && (
                         <p className="text-xs text-gray-500 mt-0.5">
-                          Prazo apresentação APAC: {format(new Date(alerta.prazoApresentacaoApac), 'dd/MM/yyyy')}
+                          Prazo apresentação APAC: {formatarData(alerta.prazoApresentacaoApac)}
                         </p>
                       )}
                     </div>
@@ -342,7 +342,7 @@ export default function Dashboard() {
                         Procedimento: {alerta.procedimento.nome}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Coleta: {format(new Date(alerta.dataColeta), 'dd/MM/yyyy')} · Prazo resultado: {format(new Date(alerta.prazoResultado), 'dd/MM/yyyy')}
+                        Coleta: {formatarData(alerta.dataColeta)} · Prazo resultado: {formatarData(alerta.prazoResultado)}
                       </p>
                     </div>
                     <div className="text-right ml-2">
@@ -488,12 +488,12 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="data" 
-                tickFormatter={(value) => format(new Date(value), 'dd/MM')}
+                tickFormatter={(value) => formatarData(value)?.slice(0, 5) ?? ''}
                 style={{ fontSize: '11px' }}
               />
               <YAxis style={{ fontSize: '11px' }} />
               <Tooltip 
-                labelFormatter={(value) => format(new Date(value), 'dd/MM/yyyy')}
+                labelFormatter={(value) => formatarData(value)}
               />
               <Legend wrapperStyle={{ fontSize: '11px' }} />
               <Line type="monotone" dataKey="total" stroke="#0ea5e9" name="Total" />
@@ -672,7 +672,7 @@ export default function Dashboard() {
                         {solicitacao.paciente.nome} - {solicitacao.oci.nome}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Último dia para registro: {format(dataFim, 'dd/MM/yyyy')} | Comp. fim: {competenciaFormatada}
+                        Último dia para registro: {formatarData(dataFim)} | Comp. fim: {competenciaFormatada}
                       </p>
                     </div>
                     <div className="text-right ml-2">

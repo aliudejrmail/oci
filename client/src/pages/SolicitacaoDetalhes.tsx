@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { format, parseISO } from 'date-fns'
 import { ArrowLeft, CheckCircle, AlertTriangle, Trash2, FileText, Download, Eye, FileCheck, Edit, Calendar, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import RegistroAutorizacaoApacModal from '../components/RegistroAutorizacaoApacModal'
@@ -9,45 +8,7 @@ import RegistroProcedimentosModal from '../components/RegistroProcedimentosModal
 import EditarSolicitacaoModal from '../components/EditarSolicitacaoModal'
 import AgendarModal from '../components/AgendarModal'
 import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
-
-// Helper para formatar data sem problemas de timezone
-// Converte string ISO para Date local considerando apenas a parte da data
-const formatarDataSemTimezone = (dataString: string | Date | null | undefined): string => {
-  if (!dataString) return ''
-  
-  let dataStr: string
-  if (dataString instanceof Date) {
-    // Se já for Date, extrair apenas a parte da data
-    const ano = dataString.getFullYear()
-    const mes = (dataString.getMonth() + 1).toString().padStart(2, '0')
-    const dia = dataString.getDate().toString().padStart(2, '0')
-    return `${dia}/${mes}/${ano}`
-  } else {
-    dataStr = dataString.toString()
-  }
-  
-  // Extrair apenas a parte da data (YYYY-MM-DD) ignorando hora e timezone
-  const partesData = dataStr.split('T')[0].split('-')
-  if (partesData.length === 3) {
-    const ano = parseInt(partesData[0], 10)
-    const mes = parseInt(partesData[1], 10) - 1 // Mes é 0-indexed no JavaScript
-    const dia = parseInt(partesData[2], 10)
-    // Criar data local (sem timezone) usando o construtor Date(ano, mes, dia)
-    const dataLocal = new Date(ano, mes, dia)
-    return format(dataLocal, 'dd/MM/yyyy')
-  }
-  
-  // Fallback: tentar parseISO do date-fns
-  try {
-    const dataParsed = parseISO(dataStr)
-    const ano = dataParsed.getFullYear()
-    const mes = dataParsed.getMonth()
-    const dia = dataParsed.getDate()
-    return format(new Date(ano, mes, dia), 'dd/MM/yyyy')
-  } catch {
-    return format(new Date(dataStr), 'dd/MM/yyyy')
-  }
-}
+import { formatarDataSemTimezone, formatarDataHora, formatarDataHoraCompacto } from '../utils/date-format'
 
 export default function SolicitacaoDetalhes() {
   const { id } = useParams()
@@ -312,7 +273,7 @@ export default function SolicitacaoDetalhes() {
           <div>
             <h3 className="text-xs font-medium text-gray-500 mb-0.5">Data de Cadastro</h3>
             <p className="text-sm font-medium text-gray-900">
-              {solicitacao.dataSolicitacao ? format(new Date(solicitacao.dataSolicitacao), "dd/MM/yyyy 'às' HH:mm") : '–'}
+              {solicitacao.dataSolicitacao ? formatarDataHora(solicitacao.dataSolicitacao) : '–'}
             </p>
           </div>
           <div>
@@ -357,7 +318,7 @@ export default function SolicitacaoDetalhes() {
             <div>
               <h3 className="text-xs font-medium text-gray-500 mb-0.5">Data de Conclusão</h3>
               <p className="text-sm font-medium text-gray-900">
-                {format(new Date(solicitacao.dataConclusao), "dd/MM/yyyy 'às' HH:mm")}
+                {formatarDataHora(solicitacao.dataConclusao)}
               </p>
             </div>
           )}
@@ -622,7 +583,7 @@ export default function SolicitacaoDetalhes() {
                         {anexo.nomeOriginal}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {tamanhoKB} KB • {format(new Date(anexo.createdAt), 'dd/MM/yyyy HH:mm')}
+                        {tamanhoKB} KB • {formatarDataHoraCompacto(anexo.createdAt)}
                       </p>
                     </div>
                   </div>
@@ -726,7 +687,7 @@ export default function SolicitacaoDetalhes() {
                   )}
                   {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
                     <p className="text-xs text-blue-600 mt-0.5">
-                      Agendado: {new Date(execucao.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      Agendado: {formatarDataHoraCompacto(execucao.dataAgendamento)}
                       {execucao.unidadeExecutora && ` • ${execucao.unidadeExecutora}`}
                     </p>
                   )}

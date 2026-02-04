@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Calendar } from 'lucide-react'
 import { api } from '../services/api'
+import { formatarDataHoraCompacto } from '../utils/date-format'
 
 interface UnidadeOption {
   id: string
@@ -48,6 +49,7 @@ export default function AgendarModal({
   const [dataAgendamento, setDataAgendamento] = useState('')
   const [horaAgendamento, setHoraAgendamento] = useState('08:00')
   const [unidadeExecutora, setUnidadeExecutora] = useState('')
+  const [unidadeExecutoraId, setUnidadeExecutoraId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
@@ -67,8 +69,10 @@ export default function AgendarModal({
     setHoraAgendamento('08:00')
     if (reagendamentoUnidadeFixa) {
       setUnidadeExecutora(unidadeExecutoraPreenchida)
+      setUnidadeExecutoraId('')
     } else {
       setUnidadeExecutora('')
+      setUnidadeExecutoraId('')
     }
 
     const carregar = async () => {
@@ -122,6 +126,7 @@ export default function AgendarModal({
       return
     }
     const unidadeParaEnvio = reagendamentoUnidadeFixa ? unidadeExecutoraPreenchida : unidadeExecutora
+    const unidadeIdParaEnvio = reagendamentoUnidadeFixa ? '' : unidadeExecutoraId
     if (!unidadeParaEnvio.trim()) {
       setErro('Selecione a unidade executante.')
       return
@@ -134,6 +139,7 @@ export default function AgendarModal({
         await api.patch(`/solicitacoes/execucoes/${id}`, {
           dataAgendamento: dataTimeISO,
           unidadeExecutora: unidadeParaEnvio.trim(),
+          unidadeExecutoraId: unidadeIdParaEnvio || undefined,
           executanteId: null,
           status: 'AGENDADO'
         })
@@ -225,7 +231,7 @@ export default function AgendarModal({
                       <span className="text-[10px] text-gray-500">
                         {exec.procedimento.tipo} - {exec.procedimento.codigo}
                         {exec.status === 'AGENDADO' && exec.dataAgendamento && (
-                          <> • Já agendado: {new Date(exec.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</>
+                          <> • Já agendado: {formatarDataHoraCompacto(exec.dataAgendamento)}</>
                         )}
                       </span>
                     </label>
@@ -288,7 +294,7 @@ export default function AgendarModal({
               >
                 <option value="">Selecione a unidade</option>
                 {unidades.map((u) => (
-                  <option key={u.id} value={`${u.cnes} - ${u.nome}`}>
+                  <option key={u.id} value={u.id}>
                     {u.cnes} - {u.nome}
                   </option>
                 ))}

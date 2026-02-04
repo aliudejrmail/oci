@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 import { BarChart3, FileText, Calendar, Filter, Download, Printer } from 'lucide-react'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { formatarData, formatarDataHora } from '../utils/date-format'
 
 interface OpcaoRelatorio {
   id: string
@@ -26,6 +27,7 @@ const TIPO_OCI_OPCOES = [
 ]
 
 export default function Relatorios() {
+  const { usuario } = useAuth()
   const [opcoes, setOpcoes] = useState<OpcaoRelatorio[]>([])
   const [unidades, setUnidades] = useState<Array<{ id: string; nome: string; cnes: string }>>([])
   const [tipo, setTipo] = useState('')
@@ -246,7 +248,7 @@ export default function Relatorios() {
 
       {resultado && (
         <div id="relatorio-impressao" className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
             <h2 className="font-semibold text-gray-800">Resultado</h2>
             <div className="flex flex-wrap items-center gap-2 print:hidden">
               <button
@@ -283,7 +285,11 @@ export default function Relatorios() {
             <div className="hidden print:block mb-4 pb-2 border-b border-gray-200">
               <h1 className="text-lg font-bold text-gray-900">Relatório - {tituloRelatorio}</h1>
               <p className="text-xs text-gray-500 mt-1">
-                Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} | Sec. Municipal de Saúde - Parauapebas
+                Gerado em {formatarDataHora(new Date())}
+                {(usuario?.unidade?.nome || usuario?.unidadeExecutante?.nome)
+                  ? ` | ${usuario.unidade?.nome || usuario.unidadeExecutante?.nome}`
+                  : ''}
+                {' | Sec. Municipal de Saúde - Parauapebas'}
               </p>
             </div>
             <ResultadoRelatorio tipo={tipo} resultado={resultado} />
@@ -371,7 +377,7 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                   <td className="px-3 py-2">{String((s.paciente as { nome?: string })?.nome ?? '')}</td>
                   <td className="px-3 py-2">{String((s.oci as { nome?: string })?.nome ?? '')}</td>
                   <td className="px-3 py-2">{String(s.status ?? '')}</td>
-                  <td className="px-3 py-2">{s.dataSolicitacao ? format(new Date(s.dataSolicitacao as string), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</td>
+                  <td className="px-3 py-2">{s.dataSolicitacao ? formatarData(s.dataSolicitacao as string) : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -453,7 +459,7 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                   <td className="px-3 py-2 font-mono">{String((e.solicitacao as { numeroProtocolo?: string })?.numeroProtocolo ?? '')}</td>
                   <td className="px-3 py-2">{String((e.solicitacao as { paciente?: { nome?: string } })?.paciente?.nome ?? '')}</td>
                   <td className="px-3 py-2">{String((e.procedimento as { nome?: string })?.nome ?? '')}</td>
-                  <td className="px-3 py-2">{e.dataExecucao ? format(new Date(e.dataExecucao as string), 'dd/MM/yyyy', { locale: ptBR }) : '-'}</td>
+                  <td className="px-3 py-2">{e.dataExecucao ? formatarData(e.dataExecucao as string) : '-'}</td>
                 </tr>
               ))}
             </tbody>

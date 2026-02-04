@@ -38,7 +38,9 @@ export default function EditarSolicitacaoModal({
   const [form, setForm] = useState({
     observacoes: '',
     unidadeOrigem: '',
+    unidadeOrigemId: '',
     unidadeDestino: '',
+    unidadeDestinoId: '',
     unidadeOrigemBusca: '',
     unidadeDestinoBusca: '',
     ociId: '',
@@ -83,10 +85,14 @@ export default function EditarSolicitacaoModal({
         : ''
       const uOrigem = solicitacao.unidadeOrigem || ''
       const uDestino = solicitacao.unidadeDestino || ''
+      const uOrigemId = solicitacao.unidadeOrigemId || solicitacao.unidadeOrigemRef?.id || ''
+      const uDestinoId = solicitacao.unidadeDestinoId || solicitacao.unidadeDestinoRef?.id || ''
       setForm({
         observacoes: solicitacao.observacoes || '',
         unidadeOrigem: uOrigem,
+        unidadeOrigemId: uOrigemId,
         unidadeDestino: uDestino,
+        unidadeDestinoId: uDestinoId,
         unidadeOrigemBusca: uOrigem,
         unidadeDestinoBusca: uDestino,
         ociId,
@@ -165,6 +171,7 @@ export default function EditarSolicitacaoModal({
     setForm((f) => ({
       ...f,
       unidadeOrigem: valor,
+      unidadeOrigemId: u.id,
       unidadeOrigemBusca: valor
     }))
     setShowUnidadeOrigemDropdown(false)
@@ -175,6 +182,7 @@ export default function EditarSolicitacaoModal({
     setForm((f) => ({
       ...f,
       unidadeDestino: valor,
+      unidadeDestinoId: u.id,
       unidadeDestinoBusca: valor
     }))
     setShowUnidadeDestinoDropdown(false)
@@ -239,7 +247,9 @@ export default function EditarSolicitacaoModal({
       const payload: any = {
         observacoes: form.observacoes.trim() || null,
         unidadeOrigem: form.unidadeOrigem.trim(),
-        unidadeDestino: form.unidadeDestino.trim() || null
+        unidadeOrigemId: form.unidadeOrigemId || null,
+        unidadeDestino: form.unidadeDestino.trim() || null,
+        unidadeDestinoId: form.unidadeDestinoId || null
       }
       if (podeAlterarOci && form.ociId && form.ociId !== (solicitacao?.ociId || solicitacao?.oci?.id)) {
         payload.ociId = form.ociId
