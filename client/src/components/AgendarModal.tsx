@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Calendar } from 'lucide-react'
 import { api } from '../services/api'
-import { formatarDataHoraCompacto } from '../utils/date-format'
+import { formatarDataHoraSemTimezone } from '../utils/date-format'
 
 interface UnidadeOption {
   id: string
@@ -131,9 +131,7 @@ export default function AgendarModal({
       setErro('Selecione a unidade executante.')
       return
     }
-    // Converte data+hora local do usuário para ISO UTC (evita diferença de horário no servidor)
-    const d = new Date(`${dataAgendamento}T${horaAgendamento}:00`)
-    const dataTimeISO = d.toISOString()
+    const dataTimeISO = `${dataAgendamento}T${horaAgendamento}:00`
     setSubmitting(true)
     try {
       let sucessoCount = 0
@@ -233,7 +231,7 @@ export default function AgendarModal({
                       <span className="text-[10px] text-gray-500">
                         {exec.procedimento.tipo} - {exec.procedimento.codigo}
                         {exec.status === 'AGENDADO' && exec.dataAgendamento && (
-                          <> • Já agendado: {formatarDataHoraCompacto(exec.dataAgendamento)}</>
+                          <> • Já agendado: {formatarDataHoraSemTimezone(exec.dataAgendamento)}</>
                         )}
                       </span>
                     </label>

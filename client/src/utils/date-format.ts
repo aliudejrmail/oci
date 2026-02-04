@@ -34,6 +34,20 @@ export function formatarDataHoraCompacto(data: Date | string | null | undefined)
 }
 
 /**
+ * Formata data e hora sem conversão de timezone.
+ * Exibe exatamente o que está armazenado (para agendamentos).
+ */
+export function formatarDataHoraSemTimezone(data: Date | string | null | undefined): string {
+  if (!data) return ''
+  const str = typeof data === 'string' ? data : data instanceof Date ? data.toISOString() : ''
+  if (!str) return ''
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/)
+  if (!match) return ''
+  const [, ano, mes, dia, hora, min] = match
+  return `${dia}/${mes}/${ano} ${hora}:${min}`
+}
+
+/**
  * Formata data sem problemas de timezone (para strings ISO).
  * Usa apenas a parte da data (YYYY-MM-DD) para evitar deslocamento.
  */

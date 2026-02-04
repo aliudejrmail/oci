@@ -8,7 +8,7 @@ import RegistroProcedimentosModal from '../components/RegistroProcedimentosModal
 import EditarSolicitacaoModal from '../components/EditarSolicitacaoModal'
 import AgendarModal from '../components/AgendarModal'
 import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
-import { formatarDataSemTimezone, formatarDataHora, formatarDataHoraCompacto } from '../utils/date-format'
+import { formatarDataSemTimezone, formatarDataHora, formatarDataHoraCompacto, formatarDataHoraSemTimezone } from '../utils/date-format'
 
 export default function SolicitacaoDetalhes() {
   const { id } = useParams()
@@ -687,7 +687,7 @@ export default function SolicitacaoDetalhes() {
                   )}
                   {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
                     <p className="text-xs text-blue-600 mt-0.5">
-                      Agendado: {formatarDataHoraCompacto(execucao.dataAgendamento)}
+                      Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
                       {execucao.unidadeExecutora && ` • ${execucao.unidadeExecutora}`}
                     </p>
                   )}
