@@ -115,7 +115,7 @@ export class SolicitacoesService {
   }
 
   async buscarSolicitacaoPorId(id: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
+    let solicitacao = await this.prisma.solicitacaoOci.findFirst({
       where: { id, deletedAt: null },
       include: {
         paciente: true,
