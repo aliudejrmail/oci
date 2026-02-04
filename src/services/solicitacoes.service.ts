@@ -581,7 +581,15 @@ export class SolicitacoesService {
       include: { oci: true }
     });
 
-    if (!solicitacao || solicitacao.status === StatusSolicitacao.CONCLUIDA) {
+    if (!solicitacao) {
+      return;
+    }
+
+    // Se a solicitação está concluída ou cancelada, remover o alerta
+    if (solicitacao.status === StatusSolicitacao.CONCLUIDA || solicitacao.status === StatusSolicitacao.CANCELADA) {
+      await this.prisma.alertaPrazo.deleteMany({
+        where: { solicitacaoId }
+      });
       return;
     }
 
