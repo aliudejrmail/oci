@@ -643,21 +643,72 @@ export class SolicitacoesService {
       throw new Error('Execução não encontrada');
     }
 
-    // ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado para marcar como REALIZADO
+    // ANATOMO-PATOLÓGICO: determinar status automaticamente baseado nas datas
     const obrigatorio = (execucaoAtual.procedimento as any).obrigatorio !== false;
     const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(execucaoAtual.procedimento.nome);
-    if (data.status === STATUS_EXECUCAO.REALIZADO && ehAnatomoPatologicoObrigatorio) {
-      const temColeta = data.dataColetaMaterialBiopsia != null || execucaoAtual.dataColetaMaterialBiopsia != null;
-      const temResultado = data.dataRegistroResultadoBiopsia != null || execucaoAtual.dataRegistroResultadoBiopsia != null;
-      if (!temColeta || !temResultado) {
-        throw new Error(
-          'Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado.'
-        );
+    
+    if (ehAnatomoPatologicoObrigatorio) {
+      const dataColetaFinal = data.dataColetaMaterialBiopsia || execucaoAtual.dataColetaMaterialBiopsia;
+      const dataResultadoFinal = data.dataRegistroResultadoBiopsia || execucaoAtual.dataRegistroResultadoBiopsia;
+      
+      // Se está tentando marcar como REALIZADO mas não tem as duas datas
+      if (data.status === STATUS_EXECUCAO.REALIZADO) {
+        if (!dataColetaFinal || !dataResultadoFinal) {
+          throw new Error(
+            'Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado para marcar como realizado.'
+          );
+        }
+      }
+      
+      // Se não está explicitamente definindo um status, determinar automaticamente
+      if (!data.status || data.status === STATUS_EXECUCAO.PENDENTE) {
+        if (dataColetaFinal && dataResultadoFinal) {
+          // Tem ambas as datas: REALIZADO
+          data.status = STATUS_EXECUCAO.REALIZADO;
+          if (!data.dataExecucao && !execucaoAtual.dataExecucao) {
+            data.dataExecucao = dataResultadoFinal; // Usar data do resultado como data de execução
+          }
+        } else if (dataColetaFinal) {
+          // Tem só coleta: AGUARDANDO_RESULTADO
+          data.status = STATUS_EXECUCAO.AGUARDANDO_RESULTADO;
+        } else {
+          // Não tem nenhuma data: PENDENTE
+          data.status = STATUS_EXECUCAO.PENDENTE;
+        }
       }
     }
 
+    // Normalizar datas para evitar problemas de timezone
+    // Garantir que datas sejam interpretadas como início do dia no timezone local
+    const dataAtualizacao: any = { ...data };
+
     // Só permitir marcar outros procedimentos como REALIZADO se a consulta médica especializada já tiver sido realizada
     const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
+    
+    // Lógica automática para AGUARDANDO_RESULTADO em procedimentos anatomo-patológicos (aplicar antes da validação)
+    if (ehAnatomoPatologicoObrigatorio && !data.status) {
+      const temColeta = data.dataColetaMaterialBiopsia != null || 
+                       (execucaoAtual.dataColetaMaterialBiopsia != null && data.dataColetaMaterialBiopsia !== null);
+      const temResultado = data.dataRegistroResultadoBiopsia != null || 
+                          (execucaoAtual.dataRegistroResultadoBiopsia != null && data.dataRegistroResultadoBiopsia !== null);
+      
+      if (temColeta && !temResultado) {
+        // Tem coleta mas não tem resultado -> AGUARDANDO_RESULTADO
+        dataAtualizacao.status = STATUS_EXECUCAO.AGUARDANDO_RESULTADO;
+      } else if (temColeta && temResultado) {
+        // Tem coleta e resultado -> REALIZADO automaticamente (não precisa validar consulta especializada)
+        dataAtualizacao.status = STATUS_EXECUCAO.REALIZADO;
+        // Definir dataExecucao como a data da coleta se não estiver definida
+        if (!data.dataExecucao && !execucaoAtual.dataExecucao) {
+          dataAtualizacao.dataExecucao = data.dataColetaMaterialBiopsia || execucaoAtual.dataColetaMaterialBiopsia;
+        }
+      } else if (!temColeta && !temResultado) {
+        // Não tem coleta nem resultado -> PENDENTE
+        dataAtualizacao.status = STATUS_EXECUCAO.PENDENTE;
+      }
+    }
+    
+    // Aplicar validação da consulta especializada apenas para status explícitos (não automáticos)
     if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
       const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findFirst({
         where: { id: execucaoAtual.solicitacaoId, deletedAt: null },
@@ -682,10 +733,6 @@ export class SolicitacoesService {
         }
       }
     }
-
-    // Normalizar datas para evitar problemas de timezone
-    // Garantir que datas sejam interpretadas como início do dia no timezone local
-    const dataAtualizacao: any = { ...data };
 
     // Unidade executora: garantir que unidadeExecutora seja o nome (não UUID)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -714,8 +761,15 @@ export class SolicitacoesService {
       dataAtualizacao.dataExecucao = dataNormalizada;
     }
     
-    // dataAgendamento: aceitar data+hora (agendamento) ou só data
-    if (data.dataAgendamento && typeof data.dataAgendamento === 'string') {
+    // dataAgendamento: aceitar data+hora (agendamento), só data, ou null (para desagendar)
+    if (data.dataAgendamento === null || data.dataAgendamento === undefined) {
+      if (data.status === STATUS_EXECUCAO.PENDENTE) {
+        dataAtualizacao.dataAgendamento = null;
+        dataAtualizacao.unidadeExecutora = null;
+        dataAtualizacao.unidadeExecutoraId = null;
+        dataAtualizacao.executanteId = null;
+      }
+    } else if (data.dataAgendamento && typeof data.dataAgendamento === 'string') {
       if (data.dataAgendamento.includes('T')) {
         dataAtualizacao.dataAgendamento = new Date(data.dataAgendamento);
       } else {
@@ -753,6 +807,7 @@ export class SolicitacoesService {
         dataAtualizacao.dataRegistroResultadoBiopsia = null;
       }
     }
+    
     // Atualizar a execução
     const execucao = await this.prisma.execucaoProcedimento.update({
       where: { id },

@@ -283,6 +283,13 @@ export default function RegistroProcedimentosModal({
     setSucesso(null)
 
     const procedimentosRealizados = procedimentos.filter(p => p.realizado)
+    // Também incluir procedimentos anatomo-patológicos com data de coleta (mesmo não marcados como realizados)
+    const procedimentosComColeta = procedimentos.filter(p => 
+      !p.realizado && 
+      p.ehAnatomoPatologicoObrigatorio && 
+      p.dataColetaMaterialBiopsia && 
+      !p.dataRegistroResultadoBiopsia
+    )
     const consultaJaRealizadaSubmit =
       execucoesParaStatus.some(
         (e) => isConsultaMedicaEspecializada(e.procedimento.nome) && e.status === 'REALIZADO'
@@ -293,12 +300,12 @@ export default function RegistroProcedimentosModal({
       return
     }
 
-    if (procedimentosRealizados.length === 0) {
-      setErro('Selecione pelo menos um procedimento como realizado.')
+    if (procedimentosRealizados.length === 0 && procedimentosComColeta.length === 0) {
+      setErro('Selecione pelo menos um procedimento como realizado ou registre data de coleta para procedimentos anatomo-patológicos.')
       return
     }
 
-    // Validar que todos os procedimentos marcados têm data
+    // Validar que todos os procedimentos marcados como realizados têm data
     const semData = procedimentosRealizados.find(p => !p.dataExecucao)
     if (semData) {
       setErro('Todos os procedimentos marcados como realizados devem ter uma data de execução.')
@@ -317,17 +324,18 @@ export default function RegistroProcedimentosModal({
       return
     }
 
-    // ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado
-    const anatomoSemColetaOuResultado = procedimentosRealizados.find(
+    // ANATOMO-PATOLÓGICO marcado como realizado: exige data de coleta e data de resultado
+    const anatomoRealizadoSemColetaOuResultado = procedimentosRealizados.find(
       (p) => p.ehAnatomoPatologicoObrigatorio && (!p.dataColetaMaterialBiopsia || !p.dataRegistroResultadoBiopsia)
     )
-    if (anatomoSemColetaOuResultado) {
-      setErro('Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado.')
+    if (anatomoRealizadoSemColetaOuResultado) {
+      setErro('Para procedimentos anatomo-patológicos marcados como realizados, é necessário informar tanto a data de coleta quanto a data do resultado.')
       return
     }
 
     setSubmitting(true)
     try {
+      // Promises para procedimentos marcados como realizados
       const promises = procedimentosRealizados.map(proc => {
         const dataFormatada = proc.dataExecucao.includes('T')
           ? proc.dataExecucao.split('T')[0]
@@ -348,6 +356,16 @@ export default function RegistroProcedimentosModal({
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
 
+      // Promises para procedimentos com apenas data de coleta (AGUARDANDO_RESULTADO)
+      const promisesColeta = procedimentosComColeta.map(proc => {
+        const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
+        const payload: Record<string, unknown> = {
+          dataColetaMaterialBiopsia: new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
+        }
+        // Não definir status explicitamente - deixar o backend determinar (AGUARDANDO_RESULTADO)
+        return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
+      })
+
       // Também atualizar procedimentos que foram desmarcados (se estavam como REALIZADO)
       const procedimentosDesmarcados = procedimentos.filter(
         p => !p.realizado && execucoesParaStatus.find(e => e.id === p.execucaoId)?.status === 'REALIZADO'
@@ -360,9 +378,18 @@ export default function RegistroProcedimentosModal({
         })
       )
 
-      await Promise.all([...promises, ...promisesDesmarcar])
+      await Promise.all([...promises, ...promisesColeta, ...promisesDesmarcar])
 
-      setSucesso(`${procedimentosRealizados.length} procedimento(s) registrado(s) como realizado(s)!`)
+      let mensagem = ''
+      if (procedimentosRealizados.length > 0 && procedimentosComColeta.length > 0) {
+        mensagem = `${procedimentosRealizados.length} procedimento(s) realizado(s) e ${procedimentosComColeta.length} com coleta registrada!`
+      } else if (procedimentosRealizados.length > 0) {
+        mensagem = `${procedimentosRealizados.length} procedimento(s) registrado(s) como realizado(s)!`
+      } else if (procedimentosComColeta.length > 0) {
+        mensagem = `${procedimentosComColeta.length} procedimento(s) com coleta registrada - aguardando resultado!`
+      }
+      
+      setSucesso(mensagem)
       setTimeout(() => {
         onSuccess?.()
         onClose()

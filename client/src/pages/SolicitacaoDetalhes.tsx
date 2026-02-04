@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { ArrowLeft, CheckCircle, AlertTriangle, Trash2, FileText, Download, Eye, FileCheck, Edit, Calendar, X } from 'lucide-react'
+import { ArrowLeft, CheckCircle, AlertTriangle, Trash2, FileText, Download, Eye, FileCheck, Edit, Calendar, X, CalendarX2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import RegistroAutorizacaoApacModal from '../components/RegistroAutorizacaoApacModal'
 import RegistroProcedimentosModal from '../components/RegistroProcedimentosModal'
 import EditarSolicitacaoModal from '../components/EditarSolicitacaoModal'
 import AgendarModal from '../components/AgendarModal'
-import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
+import { getStatusExibicao } from '../utils/procedimento-display'
 import { formatarDataSemTimezone, formatarDataHora, formatarDataHoraCompacto, formatarDataHoraSemTimezone } from '../utils/date-format'
 
 export default function SolicitacaoDetalhes() {
@@ -26,6 +26,7 @@ export default function SolicitacaoDetalhes() {
   const [justificativaCancelamento, setJustificativaCancelamento] = useState('')
   const [removendoAnexoId, setRemovendoAnexoId] = useState<string | null>(null)
   const [unidadesMap, setUnidadesMap] = useState<Record<string, string>>({})
+  const [removendoAgendamentoId, setRemovendoAgendamentoId] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -120,6 +121,22 @@ export default function SolicitacaoDetalhes() {
       return
     }
     await atualizarStatus('CANCELADA', justificativaCancelamento)
+  }
+
+  const removerAgendamento = async (execucaoId: string) => {
+    if (!confirm('Remover o agendamento deste procedimento? Ele voltará ao status Pendente.')) return
+    setRemovendoAgendamentoId(execucaoId)
+    try {
+      await api.patch(`/solicitacoes/execucoes/${execucaoId}`, {
+        status: 'PENDENTE',
+        dataAgendamento: null
+      })
+      await carregarSolicitacao()
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao remover agendamento.')
+    } finally {
+      setRemovendoAgendamentoId(null)
+    }
   }
 
   const excluirSolicitacao = async () => {
@@ -697,9 +714,9 @@ export default function SolicitacaoDetalhes() {
                       ? 'REALIZADO'
                       : statusExibicao === 'DISPENSADO'
                       ? 'DISPENSADO'
-                      : execucao.dataColetaMaterialBiopsia && !execucao.dataRegistroResultadoBiopsia && isProcedimentoAnatomoPatologico(execucao.procedimento?.nome ?? '')
+                      : statusExibicao === 'PENDENTE - AGUARDANDO RESULTADO'
                       ? 'Pendente – aguardando resultado'
-                      : execucao.status}
+                      : statusExibicao}
                   </span>
                   {statusExibicao === 'REALIZADO' && (
                     <p className="text-xs text-gray-600 mt-0.5 font-medium">
@@ -707,22 +724,36 @@ export default function SolicitacaoDetalhes() {
                     </p>
                   )}
                   {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
-                    <p className="text-xs text-blue-600 mt-0.5">
-                      Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
-                      {(() => {
-                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-                        const valor = execucao.unidadeExecutora?.trim()
-                        let nomeUnidade: string | null = null
-                        if (execucao.unidadeExecutoraRef) {
-                          nomeUnidade = `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
-                        } else if (valor && !uuidRegex.test(valor)) {
-                          nomeUnidade = valor
-                        } else if (valor && uuidRegex.test(valor) && unidadesMap[valor]) {
-                          nomeUnidade = unidadesMap[valor]
-                        }
-                        return nomeUnidade ? ` • ${nomeUnidade}` : ''
-                      })()}
-                    </p>
+                    <div className="mt-0.5 flex flex-col items-end gap-1">
+                      <p className="text-xs text-blue-600">
+                        Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
+                        {(() => {
+                          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                          const valor = execucao.unidadeExecutora?.trim()
+                          let nomeUnidade: string | null = null
+                          if (execucao.unidadeExecutoraRef) {
+                            nomeUnidade = `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
+                          } else if (valor && !uuidRegex.test(valor)) {
+                            nomeUnidade = valor
+                          } else if (valor && uuidRegex.test(valor) && unidadesMap[valor]) {
+                            nomeUnidade = unidadesMap[valor]
+                          }
+                          return nomeUnidade ? ` • ${nomeUnidade}` : ''
+                        })()}
+                      </p>
+                      {(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR') && (
+                        <button
+                          type="button"
+                          onClick={() => removerAgendamento(execucao.id)}
+                          disabled={removendoAgendamentoId === execucao.id}
+                          className="text-[10px] text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-0.5 disabled:opacity-50"
+                          title="Remover agendamento e voltar para Pendente"
+                        >
+                          <CalendarX2 size={12} />
+                          {removendoAgendamentoId === execucao.id ? 'Removendo...' : 'Remover agendamento'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

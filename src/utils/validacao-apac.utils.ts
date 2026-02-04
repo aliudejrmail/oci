@@ -128,8 +128,18 @@ export function validarProcedimentosObrigatoriosOci(
   procedimentosObrigatorios: ProcedimentoObrigatorio[],
   execucoes: ExecucaoParaValidacao[]
 ): { valido: boolean; erro?: string } {
-  const execucoesRealizadas = execucoes.filter((e) => e.status === STATUS_EXECUCAO.REALIZADO);
-  const idsExecutados = new Set(execucoesRealizadas.map((e) => e.procedimento.id));
+  // Considerar REALIZADO e AGUARDANDO_RESULTADO como válidos para anatomo-patológicos
+  const execucoesValidas = execucoes.filter((e) => {
+    if (e.status === STATUS_EXECUCAO.REALIZADO) return true;
+    // AGUARDANDO_RESULTADO também é considerado válido para anatomo-patológicos
+    if (e.status === STATUS_EXECUCAO.AGUARDANDO_RESULTADO && 
+        isProcedimentoAnatomoPatologico(e.procedimento.nome)) {
+      return true;
+    }
+    return false;
+  });
+  
+  const idsExecutados = new Set(execucoesValidas.map((e) => e.procedimento.id));
 
   const grupoConsulta = procedimentosObrigatorios.filter((p) =>
     isProcedimentoConsultaOuTeleconsulta(p.nome)

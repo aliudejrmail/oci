@@ -47,6 +47,7 @@ export function isConsultaMedicaEspecializada(nome: string): boolean {
  * Retorna o status para exibição na UI.
  * Quando um procedimento consulta/teleconsulta ESPECIALIZADA está REALIZADO e outro do mesmo grupo
  * está PENDENTE ou AGENDADO, o não executado exibe como DISPENSADO.
+ * Para procedimentos ANATOMO-PATOLÓGICOS com coleta mas sem resultado, exibe como "PENDENTE - AGUARDANDO RESULTADO".
  * Usa isConsultaMedicaEspecializada para alinhar com a regra do backend.
  */
 export function getStatusExibicao(
@@ -55,6 +56,11 @@ export function getStatusExibicao(
 ): string {
   if (execucao.status === 'REALIZADO' || execucao.status === 'CANCELADO' || execucao.status === 'DISPENSADO') {
     return execucao.status
+  }
+
+  // Status AGUARDANDO_RESULTADO: exibir como "PENDENTE - AGUARDANDO RESULTADO"
+  if (execucao.status === 'AGUARDANDO_RESULTADO') {
+    return 'PENDENTE - AGUARDANDO RESULTADO'
   }
 
   if (isConsultaMedicaEspecializada(execucao.procedimento.nome)) {
