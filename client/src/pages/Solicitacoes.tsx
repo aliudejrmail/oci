@@ -69,6 +69,9 @@ export default function Solicitacoes() {
       if (filtros.tipo) params.append('tipo', filtros.tipo)
       if (filtros.search) params.append('search', filtros.search)
       if (filtros.unidadeExecutora) params.append('unidadeExecutora', filtros.unidadeExecutora)
+      
+      // Adicionar timestamp para evitar cache
+      params.append('_t', Date.now().toString())
 
       const response = await api.get(`/solicitacoes?${params.toString()}`)
       const lista = response.data?.solicitacoes ?? (Array.isArray(response.data) ? response.data : [])

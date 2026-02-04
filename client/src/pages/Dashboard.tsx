@@ -132,17 +132,20 @@ export default function Dashboard() {
   const carregarDados = async () => {
     setErroApi(null)
     try {
+      // Adicionar timestamp para evitar cache
+      const timestamp = Date.now()
+      
       const promises: Promise<any>[] = [
-        api.get('/dashboard/estatisticas'),
-        api.get('/dashboard/alertas').catch(() => ({ data: [] })),
-        api.get('/dashboard/alertas-resultado-biopsia').catch(() => ({ data: [] })),
-        api.get('/dashboard/evolucao-temporal?dias=30'),
-        api.get('/dashboard/apacs-proximas-vencimento'),
-        api.get('/dashboard/proximas-prazo-registro-procedimentos').catch(() => ({ data: [] }))
+        api.get(`/dashboard/estatisticas?_t=${timestamp}`),
+        api.get(`/dashboard/alertas?_t=${timestamp}`).catch(() => ({ data: [] })),
+        api.get(`/dashboard/alertas-resultado-biopsia?_t=${timestamp}`).catch(() => ({ data: [] })),
+        api.get(`/dashboard/evolucao-temporal?dias=30&_t=${timestamp}`),
+        api.get(`/dashboard/apacs-proximas-vencimento?_t=${timestamp}`),
+        api.get(`/dashboard/proximas-prazo-registro-procedimentos?_t=${timestamp}`).catch(() => ({ data: [] }))
       ]
 
       if (usuario?.tipo === 'DIRCA') {
-        promises.push(api.get('/dashboard/notificacoes-dirca').catch(() => ({ data: { apacsPendentes: [], solicitacoesRecentes: [], totalApacsPendentes: 0, totalSolicitacoesRecentes: 0 } })))
+        promises.push(api.get(`/dashboard/notificacoes-dirca?_t=${timestamp}`).catch(() => ({ data: { apacsPendentes: [], solicitacoesRecentes: [], totalApacsPendentes: 0, totalSolicitacoesRecentes: 0 } })))
       }
 
       const results = await Promise.all(promises)
