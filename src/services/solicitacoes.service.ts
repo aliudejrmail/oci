@@ -158,6 +158,39 @@ export class SolicitacoesService {
       }
     });
 
+    // Enriquecer execuções: quando unidadeExecutora contém UUID (ID no campo errado), resolver o nome
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (solicitacao?.execucoes?.length) {
+      const execucoesEnriquecidas = await Promise.all(
+        solicitacao.execucoes.map(async (exec: any) => {
+          const valor = exec.unidadeExecutora?.trim();
+          const ehUuid = valor && uuidRegex.test(valor);
+          const semRef = !exec.unidadeExecutoraRef;
+          if (ehUuid && semRef) {
+            const unidade = await this.prisma.unidadeSaude.findUnique({
+              where: { id: valor },
+              select: { id: true, cnes: true, nome: true }
+            });
+            if (unidade) {
+              const displayNome = `${unidade.cnes} - ${unidade.nome}`;
+              // Corrigir no banco para não precisar enriquecer em toda requisição
+              await this.prisma.execucaoProcedimento.update({
+                where: { id: exec.id },
+                data: { unidadeExecutora: displayNome, unidadeExecutoraId: unidade.id }
+              }).catch(() => {});
+              return {
+                ...exec,
+                unidadeExecutora: displayNome,
+                unidadeExecutoraRef: { cnes: unidade.cnes, nome: unidade.nome }
+              };
+            }
+          }
+          return exec;
+        })
+      );
+      solicitacao = { ...solicitacao, execucoes: execucoesEnriquecidas };
+    }
+
     // Adicionar prazos APAC quando houver competências (2 competências - Portaria 1640/2024)
     // Oncológico: primeiro critério 30 dias desde a consulta; considera-se também 2 competências
     // diasRestantes SEMPRE em relação ao REGISTRO de procedimentos (dataFimValidadeApac), nunca à apresentação APAC

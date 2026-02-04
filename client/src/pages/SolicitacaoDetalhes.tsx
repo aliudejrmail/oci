@@ -25,12 +25,33 @@ export default function SolicitacaoDetalhes() {
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false)
   const [justificativaCancelamento, setJustificativaCancelamento] = useState('')
   const [removendoAnexoId, setRemovendoAnexoId] = useState<string | null>(null)
+  const [unidadesMap, setUnidadesMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (id) {
       carregarSolicitacao()
     }
   }, [id])
+
+  // Carregar mapa de unidades para resolver UUID em unidadeExecutora (fallback quando backend não retorna nome)
+  useEffect(() => {
+    const temUuidEmExecucao = solicitacao?.execucoes?.some((e: any) => {
+      const v = e?.unidadeExecutora?.trim()
+      return v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+    })
+    if (temUuidEmExecucao) {
+      api.get('/unidades-executantes')
+        .then((res) => {
+          const lista = res?.data ?? []
+          const map: Record<string, string> = {}
+          lista.forEach((u: { id: string; cnes: string; nome: string }) => {
+            map[u.id] = `${u.cnes} - ${u.nome}`
+          })
+          setUnidadesMap(map)
+        })
+        .catch(() => {})
+    }
+  }, [solicitacao?.execucoes])
 
   const carregarSolicitacao = async () => {
     if (!id) {
@@ -690,11 +711,15 @@ export default function SolicitacaoDetalhes() {
                       Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
                       {(() => {
                         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-                        const nomeUnidade = execucao.unidadeExecutoraRef
-                          ? `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
-                          : (execucao.unidadeExecutora && !uuidRegex.test(execucao.unidadeExecutora.trim()))
-                            ? execucao.unidadeExecutora
-                            : null
+                        const valor = execucao.unidadeExecutora?.trim()
+                        let nomeUnidade: string | null = null
+                        if (execucao.unidadeExecutoraRef) {
+                          nomeUnidade = `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
+                        } else if (valor && !uuidRegex.test(valor)) {
+                          nomeUnidade = valor
+                        } else if (valor && uuidRegex.test(valor) && unidadesMap[valor]) {
+                          nomeUnidade = unidadesMap[valor]
+                        }
                         return nomeUnidade ? ` • ${nomeUnidade}` : ''
                       })()}
                     </p>
