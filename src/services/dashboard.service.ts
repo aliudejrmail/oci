@@ -450,15 +450,13 @@ export class DashboardService {
       // Buscar solicitações que:
       // 1. Têm primeiro procedimento registrado (dataInicioValidadeApac não é null)
       // 2. Têm competência fim APAC definida
-      // 3. Estão em andamento (não concluídas)
-      // 4. Ainda não têm data de encerramento (não foram concluídas)
+      // 3. Estão em andamento (não concluídas nem canceladas)
       const solicitacoes = await this.prisma.solicitacaoOci.findMany({
         where: {
           dataInicioValidadeApac: { not: null },
           competenciaFimApac: { not: null },
-          dataEncerramentoApac: null, // Ainda não foram encerradas
           status: {
-            in: [StatusSolicitacao.EM_ANDAMENTO]
+            in: [StatusSolicitacao.EM_ANDAMENTO, StatusSolicitacao.PENDENTE]
           }
         },
         include: {
