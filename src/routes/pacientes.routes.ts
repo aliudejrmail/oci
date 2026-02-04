@@ -46,7 +46,12 @@ router.get('/', async (req, res) => {
           nome: true,
           cpf: true,
           cns: true,
-          dataNascimento: true
+          dataNascimento: true,
+          sexo: true,
+          municipio: true,
+          uf: true,
+          telefone: true,
+          email: true
         }
       }),
       prisma.paciente.count({ where })
@@ -166,9 +171,63 @@ router.post('/', async (req, res) => {
 // Atualizar paciente
 router.put('/:id', async (req, res) => {
   try {
+    const id = req.params.id;
+    const {
+      nome,
+      cpf,
+      cns,
+      dataNascimento,
+      sexo,
+      responsavel,
+      cep,
+      logradouro,
+      numero,
+      bairro,
+      municipio,
+      uf,
+      telefone,
+      email
+    } = req.body;
+
+    if (!nome?.trim() || !cpf?.trim() || !dataNascimento || !sexo?.trim() || !municipio?.trim() || !uf?.trim()) {
+      return res.status(400).json({
+        message: 'Campos obrigatórios: nome, CPF, data de nascimento, sexo, município e UF.'
+      });
+    }
+
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (cpfLimpo.length !== 11) {
+      return res.status(400).json({ message: 'CPF deve conter 11 dígitos.' });
+    }
+
+    const existente = await prisma.paciente.findFirst({
+      where: {
+        cpf: cpfLimpo,
+        id: { not: id }
+      }
+    });
+    if (existente) {
+      return res.status(400).json({ message: 'Já existe outro paciente cadastrado com este CPF.' });
+    }
+
     const paciente = await prisma.paciente.update({
-      where: { id: req.params.id },
-      data: req.body
+      where: { id },
+      data: {
+        nome: nome.trim(),
+        cpf: cpfLimpo,
+        cns: cns ? cns.replace(/\D/g, '') : null,
+        dataNascimento: new Date(dataNascimento),
+        sexo: sexo.trim(),
+        responsavel: responsavel?.trim() || null,
+        cep: cep?.replace(/\D/g, '') || null,
+        logradouro: logradouro?.trim() || null,
+        numero: numero?.trim() || null,
+        bairro: bairro?.trim() || null,
+        municipio: municipio.trim(),
+        uf: uf.trim().toUpperCase().slice(0, 2),
+        telefone: telefone?.replace(/\D/g, '') || null,
+        email: email?.trim() || null
+      }
     });
     return res.json(paciente);
   } catch (error: any) {

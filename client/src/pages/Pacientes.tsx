@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Pencil } from 'lucide-react'
 import NovoPacienteModal from '../components/NovoPacienteModal'
+import EditarPacienteModal from '../components/EditarPacienteModal'
 import { formatarDataSemTimezone } from '../utils/date-format'
 
 interface Paciente {
@@ -21,6 +22,8 @@ export default function Pacientes() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [modalNovoPacienteAberto, setModalNovoPacienteAberto] = useState(false)
+  const [modalEditarPacienteAberto, setModalEditarPacienteAberto] = useState(false)
+  const [pacienteParaEditarId, setPacienteParaEditarId] = useState<string | null>(null)
   const [erroApi, setErroApi] = useState<string | null>(null)
 
   useEffect(() => {
@@ -97,12 +100,13 @@ export default function Pacientes() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sexo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Município/UF</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telefone</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {pacientes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     Nenhum paciente encontrado
                   </td>
                 </tr>
@@ -127,6 +131,19 @@ export default function Pacientes() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {paciente.telefone || '-'}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPacienteParaEditarId(paciente.id)
+                          setModalEditarPacienteAberto(true)
+                        }}
+                        className="p-2 rounded text-gray-600 hover:bg-primary-50 hover:text-primary-600"
+                        title="Editar paciente"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -140,6 +157,19 @@ export default function Pacientes() {
         onClose={() => setModalNovoPacienteAberto(false)}
         onSuccess={() => {
           setModalNovoPacienteAberto(false)
+          carregarPacientes()
+        }}
+      />
+      <EditarPacienteModal
+        open={modalEditarPacienteAberto}
+        pacienteId={pacienteParaEditarId}
+        onClose={() => {
+          setModalEditarPacienteAberto(false)
+          setPacienteParaEditarId(null)
+        }}
+        onSuccess={() => {
+          setModalEditarPacienteAberto(false)
+          setPacienteParaEditarId(null)
           carregarPacientes()
         }}
       />
