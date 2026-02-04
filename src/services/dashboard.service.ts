@@ -472,17 +472,29 @@ export class DashboardService {
               id: true,
               codigo: true,
               nome: true,
-              tipo: true
+              tipo: true,
+              procedimentos: {
+                where: { obrigatorio: true },
+                select: {
+                  id: true,
+                  codigo: true,
+                  nome: true
+                }
+              }
             }
           },
           execucoes: {
-            where: {
-              status: STATUS_EXECUCAO.REALIZADO,
-              dataExecucao: { not: null }
-            },
             select: {
               id: true,
-              dataExecucao: true
+              status: true,
+              dataExecucao: true,
+              procedimento: {
+                select: {
+                  id: true,
+                  codigo: true,
+                  nome: true
+                }
+              }
             }
           }
         }
@@ -493,6 +505,25 @@ export class DashboardService {
         .map((sol) => {
           try {
             if (!sol.competenciaFimApac) return null;
+            
+            // Verificar se ainda há procedimentos obrigatórios pendentes
+            const procedimentosObrigatorios = sol.oci?.procedimentos || [];
+            if (procedimentosObrigatorios.length > 0) {
+              // Verificar se todos os obrigatórios estão realizados
+              const todosRealizados = procedimentosObrigatorios.every(procObrig => {
+                // Verificar se este procedimento obrigatório tem uma execução REALIZADO
+                return sol.execucoes.some(exec => 
+                  exec.procedimento.id === procObrig.id && 
+                  exec.status === STATUS_EXECUCAO.REALIZADO
+                );
+              });
+
+              // Se todos os obrigatórios já foram realizados, não mostrar alerta
+              if (todosRealizados) {
+                return null;
+              }
+            }
+
             const tipoOci = sol.oci?.tipo;
             const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
