@@ -141,6 +141,7 @@ model Profissional {
 
   unidades      ProfissionalUnidade[]
   cboRelacao    Cbo?                  @relation(fields: [cboId], references: [id], onDelete: SetNull)
+  solicitacoesMedicoSolicitante SolicitacaoOci[] @relation("SolicitacaoMedicoSolicitante")
 
   @@index([nome])
   @@index([cns])
@@ -328,7 +329,7 @@ model SolicitacaoOci {
   atualizadoPor    Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
   unidadeOrigemRef UnidadeSaude?          @relation("UnidadeOrigem", fields: [unidadeOrigemId], references: [id], onDelete: SetNull)
   unidadeDestinoRef UnidadeSaude?         @relation("UnidadeDestino", fields: [unidadeDestinoId], references: [id], onDelete: SetNull)
-  medicoSolicitante Profissional?         @relation(fields: [medicoSolicitanteId], references: [id], onDelete: SetNull)
+  medicoSolicitante Profissional?         @relation("SolicitacaoMedicoSolicitante", fields: [medicoSolicitanteId], references: [id], onDelete: SetNull)
   execucoes        ExecucaoProcedimento[]
   alerta           AlertaPrazo?           @relation("Alertas")
   anexos           AnexoSolicitacao[]
