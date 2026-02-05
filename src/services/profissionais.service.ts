@@ -42,6 +42,13 @@ export class ProfissionaisService {
                   }
                 }
               }
+            },
+            cboRelacao: {
+              select: {
+                id: true,
+                codigo: true,
+                descricao: true
+              }
             }
           },
           orderBy: { nome: 'asc' },
@@ -80,15 +87,29 @@ export class ProfissionaisService {
               }
             }
           }
+        },
+        cboRelacao: {
+          select: {
+            id: true,
+            codigo: true,
+            descricao: true
+          }
         }
       }
+    });
+  }
+
+  async listarCbos() {
+    return await this.prisma.cbo.findMany({
+      where: { ativo: true },
+      orderBy: { descricao: 'asc' }
     });
   }
 
   async criarProfissional(data: {
     nome: string;
     cns: string;
-    cbo: string;
+    cboId: string;
     unidadesIds?: string[];
   }) {
     // Validar CNS (15 dígitos)
@@ -111,7 +132,7 @@ export class ProfissionaisService {
       data: {
         nome: data.nome.trim(),
         cns: cnsLimpo,
-        cbo: data.cbo.trim(),
+        cboId: data.cboId,
         unidades: data.unidadesIds && data.unidadesIds.length > 0 ? {
           create: data.unidadesIds.map(unidadeId => ({
             unidadeId
@@ -129,6 +150,13 @@ export class ProfissionaisService {
               }
             }
           }
+        },
+        cboRelacao: {
+          select: {
+            id: true,
+            codigo: true,
+            descricao: true
+          }
         }
       }
     });
@@ -139,7 +167,7 @@ export class ProfissionaisService {
   async atualizarProfissional(id: string, data: {
     nome?: string;
     cns?: string;
-    cbo?: string;
+    cboId?: string;
     ativo?: boolean;
     unidadesIds?: string[];
   }) {
@@ -175,8 +203,8 @@ export class ProfissionaisService {
       updateData.cns = cnsLimpo;
     }
 
-    if (data.cbo !== undefined) {
-      updateData.cbo = data.cbo.trim();
+    if (data.cboId !== undefined) {
+      updateData.cboId = data.cboId;
     }
 
     if (data.ativo !== undefined) {
@@ -213,6 +241,13 @@ export class ProfissionaisService {
                 cnes: true
               }
             }
+          }
+        },
+        cboRelacao: {
+          select: {
+            id: true,
+            codigo: true,
+            descricao: true
           }
         }
       }

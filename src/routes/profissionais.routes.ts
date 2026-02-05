@@ -7,6 +7,7 @@ const controller = new ProfissionaisController();
 
 router.use(authenticate);
 
+router.get('/cbos/listar', (req, res) => controller.listarCbos(req, res));
 router.get('/', (req, res) => controller.listar(req, res));
 router.get('/:id', (req, res) => controller.buscarPorId(req, res));
 router.post('/', (req, res) => controller.criar(req as any, res));

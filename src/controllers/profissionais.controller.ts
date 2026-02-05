@@ -8,6 +8,17 @@ export class ProfissionaisController {
     return new ProfissionaisService(prisma);
   }
 
+  async listarCbos(req: Request, res: Response) {
+    try {
+      const service = this.getService();
+      const cbos = await service.listarCbos();
+      return res.json({ cbos });
+    } catch (error: any) {
+      console.error('Erro ao listar CBOs:', error?.message);
+      return res.status(500).json({ message: error?.message || 'Erro ao listar CBOs' });
+    }
+  }
+
   async listar(req: Request, res: Response) {
     try {
       const service = this.getService();
@@ -51,9 +62,9 @@ export class ProfissionaisController {
   async criar(req: AuthRequest, res: Response) {
     try {
       const service = this.getService();
-      const { nome, cns, cbo } = req.body;
+      const { nome, cns, cboId, unidadesIds } = req.body;
 
-      if (!nome || !cns || !cbo) {
+      if (!nome || !cns || !cboId) {
         return res.status(400).json({
           message: 'Todos os campos são obrigatórios: nome, CNS e CBO.'
         });
@@ -62,7 +73,8 @@ export class ProfissionaisController {
       const profissional = await service.criarProfissional({
         nome,
         cns,
-        cbo
+        cboId,
+        unidadesIds
       });
 
       return res.status(201).json(profissional);
@@ -76,13 +88,14 @@ export class ProfissionaisController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const { nome, cns, cbo, ativo } = req.body;
+      const { nome, cns, cboId, ativo, unidadesIds } = req.body;
 
       const profissional = await service.atualizarProfissional(id, {
         nome,
         cns,
-        cbo,
-        ativo
+        cboId,
+        ativo,
+        unidadesIds
       });
 
       return res.json(profissional);

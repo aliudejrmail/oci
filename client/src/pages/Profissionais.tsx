@@ -7,10 +7,16 @@ interface Profissional {
   id: string
   nome: string
   cns: string
-  cbo: string
+  cboId?: string
+  cbo?: string
   ativo: boolean
   createdAt: string
   updatedAt: string
+  cboRelacao?: {
+    id: string
+    codigo: string
+    descricao: string
+  }
   unidades?: {
     unidade: {
       id: string
@@ -27,10 +33,18 @@ interface UnidadeSaude {
   ativo: boolean
 }
 
+interface Cbo {
+  id: string
+  codigo: string
+  descricao: string
+  ativo: boolean
+}
+
 export default function Profissionais() {
   const { usuario } = useAuth()
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [unidades, setUnidades] = useState<UnidadeSaude[]>([])
+  const [cbos, setCbos] = useState<Cbo[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState<boolean | null>(true) // null = todos, true = apenas ativos, false = apenas inativos
@@ -39,7 +53,7 @@ export default function Profissionais() {
   const [form, setForm] = useState({
     nome: '',
     cns: '',
-    cbo: '',
+    cboId: '',
     unidadesIds: [] as string[]
   })
   const [submitting, setSubmitting] = useState(false)
@@ -48,6 +62,7 @@ export default function Profissionais() {
 
   useEffect(() => {
     carregarUnidades()
+    carregarCbos()
   }, [])
 
   useEffect(() => {
@@ -60,6 +75,15 @@ export default function Profissionais() {
       setUnidades(response.data.unidades || [])
     } catch (error) {
       console.error('Erro ao carregar unidades:', error)
+    }
+  }
+
+  const carregarCbos = async () => {
+    try {
+      const response = await api.get('/profissionais/cbos/listar')
+      setCbos(response.data.cbos || [])
+    } catch (error) {
+      console.error('Erro ao carregar CBOs:', error)
     }
   }
 
@@ -87,7 +111,7 @@ export default function Profissionais() {
 
   const abrirModalNovo = () => {
     setEditando(null)
-    setForm({ nome: '', cns: '', cbo: '', unidadesIds: [] })
+    setForm({ nome: '', cns: '', cboId: '', unidadesIds: [] })
     setErro(null)
     setModalAberto(true)
   }
@@ -97,7 +121,7 @@ export default function Profissionais() {
     setForm({
       nome: profissional.nome,
       cns: profissional.cns,
-      cbo: profissional.cbo,
+      cboId: profissional.cboRelacao?.id || profissional.cboId || '',
       unidadesIds: profissional.unidades?.map(u => u.unidade.id) || []
     })
     setErro(null)
@@ -107,7 +131,7 @@ export default function Profissionais() {
   const fecharModal = () => {
     setModalAberto(false)
     setEditando(null)
-    setForm({ nome: '', cns: '', cbo: '', unidadesIds: [] })
+    setForm({ nome: '', cns: '', cboId: '', unidadesIds: [] })
     setErro(null)
   }
 
@@ -127,22 +151,13 @@ export default function Profissionais() {
     setForm({ ...form, cns: value })
   }
 
-  const handleCboChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '')
-    // Formatar CBO: XXXX-XX
-    if (value.length > 4) {
-      value = `${value.substring(0, 4)}-${value.substring(4, 6)}`
-    }
-    setForm({ ...form, cbo: value })
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErro(null)
     setSubmitting(true)
 
     try {
-      if (!form.nome.trim() || !form.cns.trim() || !form.cbo.trim()) {
+      if (!form.nome.trim() || !form.cns.trim() || !form.cboId) {
         setErro('Todos os campos são obrigatórios.')
         setSubmitting(false)
         return
@@ -159,14 +174,14 @@ export default function Profissionais() {
         await api.patch(`/profissionais/${editando.id}`, {
           nome: form.nome.trim(),
           cns: cnsLimpo,
-          cbo: form.cbo.trim(),
+          cboId: form.cboId,
           unidadesIds: form.unidadesIds
         })
       } else {
         await api.post('/profissionais', {
           nome: form.nome.trim(),
           cns: cnsLimpo,
-          cbo: form.cbo.trim(),
+          cboId: form.cboId,
           unidadesIds: form.unidadesIds
         })
       }
@@ -296,8 +311,15 @@ export default function Profissionais() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {profissional.cns.replace(/(\d{3})(\d{4})(\d{4})(\d{4})/, '$1 $2 $3 $4')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {profissional.cbo}
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {profissional.cboRelacao ? (
+                        <div>
+                          <div className="font-medium">{profissional.cboRelacao.codigo}</div>
+                          <div className="text-xs text-gray-400">{profissional.cboRelacao.descricao}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">{profissional.cbo || 'Não informado'}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {profissional.unidades && profissional.unidades.length > 0 ? (
@@ -418,21 +440,24 @@ export default function Profissionais() {
               </div>
 
               <div>
-                <label htmlFor="cbo" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cboId" className="block text-sm font-medium text-gray-700 mb-1">
                   CBO (Código Brasileiro de Ocupação) <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="cbo"
-                  value={form.cbo}
-                  onChange={handleCboChange}
+                <select
+                  id="cboId"
+                  value={form.cboId}
+                  onChange={(e) => setForm({ ...form, cboId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="2234-05"
-                  maxLength={7}
                   disabled={submitting}
                   required
-                />
-                <p className="mt-1 text-xs text-gray-500">Formato: XXXX-XX</p>
+                >
+                  <option value="">Selecione um CBO...</option>
+                  {cbos.map((cbo) => (
+                    <option key={cbo.id} value={cbo.id}>
+                      {cbo.codigo} - {cbo.descricao}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

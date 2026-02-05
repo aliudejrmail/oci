@@ -115,19 +115,36 @@ model UnidadeSaude {
   @@map("unidades_saude")
 }
 
-model Profissional {
+model Cbo {
   id        String   @id @default(uuid())
-  nome      String
-  cns       String   @unique // Cartão Nacional de Saúde (15 dígitos)
-  cbo       String   // Código Brasileiro de Ocupação (ex: 2234-05)
+  codigo    String   @unique // Ex: 225120, 225250
+  descricao String   // Ex: MEDICO CARDIOLOGISTA
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  unidades ProfissionalUnidade[]
+  profissionais Profissional[]
+
+  @@index([codigo])
+  @@map("cbos")
+}
+
+model Profissional {
+  id        String   @id @default(uuid())
+  nome      String
+  cns       String   @unique // Cartão Nacional de Saúde (15 dígitos)
+  cboId     String?  // Relacionamento com tabela CBO
+  cbo       String?  // Código CBO legado (manter temporariamente)
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  unidades      ProfissionalUnidade[]
+  cboRelacao    Cbo?                  @relation(fields: [cboId], references: [id], onDelete: SetNull)
 
   @@index([nome])
   @@index([cns])
+  @@index([cboId])
   @@map("profissionais")
 }
 
