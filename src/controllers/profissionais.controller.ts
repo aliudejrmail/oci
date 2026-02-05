@@ -113,6 +113,13 @@ export class ProfissionaisController {
       const { id } = req.params;
       const { nome, cns, cboId, ativo, unidadesIds } = req.body;
 
+       // GESTOR: pode editar dados do profissional, mas não pode ativar/inativar nem alterar vínculos de outras unidades
+       if (req.userTipo === 'GESTOR' && typeof ativo !== 'undefined') {
+         return res.status(403).json({
+           message: 'Gestor não tem permissão para ativar ou inativar profissionais.'
+         });
+       }
+
        // GESTOR: pode editar dados do profissional, mas só pode alterar vínculos da própria unidade
        if (req.userTipo === 'GESTOR' && Array.isArray(unidadesIds)) {
          const usuarioGestor = await prisma.usuario.findUnique({

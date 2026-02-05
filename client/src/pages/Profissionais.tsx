@@ -46,6 +46,7 @@ export default function Profissionais() {
   const isGestor = usuario?.tipo === 'GESTOR'
   const isAutorizador = usuario?.tipo === 'AUTORIZADOR'
   const podeGerenciarProfissionais = isAdmin || isGestor || isAutorizador
+  const podeAlterarStatus = isAdmin || isAutorizador
   const gestorUnidadeId = isGestor ? (usuario?.unidadeId || null) : null
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [unidades, setUnidades] = useState<UnidadeSaude[]>([])
@@ -53,6 +54,10 @@ export default function Profissionais() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState<boolean | null>(true) // null = todos, true = apenas ativos, false = apenas inativos
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(20)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<Profissional | null>(null)
   const [form, setForm] = useState({
@@ -72,7 +77,7 @@ export default function Profissionais() {
 
   useEffect(() => {
     carregarProfissionais()
-  }, [search, filtroAtivo])
+  }, [search, filtroAtivo, page, limit])
 
   const carregarUnidades = async () => {
     try {
@@ -103,11 +108,21 @@ export default function Profissionais() {
         params.append('ativo', filtroAtivo.toString())
       }
 
+      params.append('page', page.toString())
+      params.append('limit', limit.toString())
+
       const response = await api.get(`/profissionais?${params.toString()}`)
-      setProfissionais(response.data.profissionais || [])
+      const lista = response.data.profissionais || []
+      const paginacao = response.data.paginacao || {}
+
+      setProfissionais(lista)
+      setTotal(typeof paginacao.total === 'number' ? paginacao.total : lista.length)
+      setTotalPages(typeof paginacao.totalPages === 'number' ? paginacao.totalPages : 1)
     } catch (error: any) {
       console.error('Erro ao carregar profissionais:', error)
       setProfissionais([])
+      setTotal(0)
+      setTotalPages(1)
       const msg = error?.response?.data?.message || error?.message || 'Servidor indisponível.'
       setErroApi(`Não foi possível carregar os profissionais. ${msg} Verifique se o backend está rodando (npm run dev ou npm run dev:server).`)
     } finally {
@@ -241,6 +256,9 @@ export default function Profissionais() {
     )
   }
 
+  const inicio = total === 0 ? 0 : (page - 1) * limit + 1
+  const fim = total === 0 ? 0 : Math.min(page * limit, total)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -278,7 +296,10 @@ export default function Profissionais() {
               type="text"
               placeholder="Buscar por nome, CNS ou CBO..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -287,6 +308,7 @@ export default function Profissionais() {
             onChange={(e) => {
               const value = e.target.value
               setFiltroAtivo(value === 'todos' ? null : value === 'ativos')
+              setPage(1)
             }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
@@ -367,16 +389,18 @@ export default function Profissionais() {
                             >
                               <Edit size={18} />
                             </button>
-                            <button
-                              onClick={() => handleToggleAtivo(profissional)}
-                              className={profissional.ativo 
-                                ? "text-orange-600 hover:text-orange-800" 
-                                : "text-green-600 hover:text-green-800"
-                              }
-                              title={profissional.ativo ? "Inativar" : "Ativar"}
-                            >
-                              {profissional.ativo ? <PowerOff size={18} /> : <Power size={18} />}
-                            </button>
+                            {podeAlterarStatus && (
+                              <button
+                                onClick={() => handleToggleAtivo(profissional)}
+                                className={profissional.ativo 
+                                  ? "text-orange-600 hover:text-orange-800" 
+                                  : "text-green-600 hover:text-green-800"
+                                }
+                                title={profissional.ativo ? "Inativar" : "Ativar"}
+                              >
+                                {profissional.ativo ? <PowerOff size={18} /> : <Power size={18} />}
+                              </button>
+                            )}
                           </>
                         )}
                         {isAdmin && (
@@ -395,6 +419,62 @@ export default function Profissionais() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600">
+          <div>
+            {total > 0 && (
+              <span>
+                Mostrando {inicio}-{fim} de {total} profissionais
+              </span>
+            )}
+            {total === 0 && <span>Nenhum profissional encontrado</span>}
+          </div>
+          <div className="flex items-center gap-4 justify-end">
+            <div className="flex items-center gap-2">
+              <span>Por página:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  const novoLimit = parseInt(e.target.value, 10) || 10
+                  setLimit(novoLimit)
+                  setPage(1)
+                }}
+                className="border border-gray-300 rounded px-2 py-1 bg-white"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              disabled={page === 1}
+              className={`px-3 py-1 rounded border text-sm ${
+                page === 1
+                  ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Anterior
+            </button>
+            <span>
+              Página {totalPages === 0 ? 0 : page} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => (totalPages ? Math.min(totalPages, prev + 1) : prev + 1))}
+              disabled={totalPages !== 0 && page >= totalPages}
+              className={`px-3 py-1 rounded border text-sm ${
+                totalPages !== 0 && page >= totalPages
+                  ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
 

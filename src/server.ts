@@ -85,15 +85,30 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
 });
 
 // Health check do banco (diagnóstico de erros 500)
-app.get('/api/health/db', async (_req: express.Request, res: express.Response) => {
+app.get('/api/health/db', async (req: express.Request, res: express.Response) => {
+  // Em produção, opcionalmente proteger esta rota com um header secreto
+  if (isProduction && process.env.HEALTHCHECK_KEY) {
+    const chave = req.headers['x-healthcheck-key'];
+    if (chave !== process.env.HEALTHCHECK_KEY) {
+      // Evita expor que a rota existe
+      return res.status(404).json({ status: 'erro' });
+    }
+  }
+
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: 'ok', db: 'conectado' });
+    return res.json({ status: 'ok', db: 'conectado' });
   } catch (error: any) {
     console.error('Health DB error:', error?.message, error?.code);
-    res.status(500).json({
-      status: 'erro',
-      db: 'desconectado',
+    const baseResponse = { status: 'erro', db: 'desconectado' };
+
+    if (isProduction) {
+      // Em produção, não expor detalhes do erro
+      return res.status(500).json(baseResponse);
+    }
+
+    return res.status(500).json({
+      ...baseResponse,
       message: error?.message,
       code: error?.code
     });

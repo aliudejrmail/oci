@@ -28,6 +28,8 @@
     "corrigir:status-solicitacao": "ts-node scripts/corrigir-status-solicitacao.ts",
     "corrigir:data-execucao": "ts-node scripts/corrigir-data-execucao-realizado.ts",
     "popular:fks-unidades": "ts-node scripts/popular-fks-unidades.ts",
+    "remover:paciente-adulto-teste": "ts-node scripts/remover-paciente-adulto-teste.ts",
+    "contar:profissionais": "ts-node scripts/contar-profissionais.ts",
     "kill:3001": "for /f \"tokens=5\" %%a in ('netstat -ano ^| findstr :3001') do taskkill /PID %%a /F 2>nul & echo Porta 3001 liberada"
   },
   "keywords": [
