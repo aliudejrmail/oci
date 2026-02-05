@@ -78,9 +78,13 @@ async function main() {
   console.log('🌱 Iniciando seed do banco de dados...')
 
   // Migrar perfis DIRCA para AUTORIZADOR (compatibilidade)
-  await prisma.usuario.updateMany({ where: { tipo: 'DIRCA' }, data: { tipo: 'AUTORIZADOR' } }).then((r) => {
-    if (r.count > 0) console.log(`✅ ${r.count} usuário(s) DIRCA atualizado(s) para AUTORIZADOR`)
-  })
+  // Observação: o enum TipoUsuario atual não inclui mais 'DIRCA',
+  // então este trecho foi desativado para evitar erro de tipo no ts-node.
+  // Caso ainda existam usuários com este tipo em bancos legados,
+  // faça a migração via script SQL direto.
+  // await prisma.usuario.updateMany({ where: { tipo: 'DIRCA' as any }, data: { tipo: 'AUTORIZADOR' } }).then((r) => {
+  //   if (r.count > 0) console.log(`✅ ${r.count} usuário(s) DIRCA atualizado(s) para AUTORIZADOR`)
+  // })
 
   // Criar usuário admin
   const senhaHash = await bcrypt.hash('admin123', 10)

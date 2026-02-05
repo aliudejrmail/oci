@@ -72,7 +72,8 @@ export default function Profissionais() {
   const carregarUnidades = async () => {
     try {
       const response = await api.get('/unidades?ativo=true')
-      setUnidades(response.data.unidades || [])
+      // Backend retorna um array direto em /unidades, sem wrapper { unidades }
+      setUnidades(Array.isArray(response.data) ? response.data : response.data.unidades || [])
     } catch (error) {
       console.error('Erro ao carregar unidades:', error)
     }
