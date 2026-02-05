@@ -287,13 +287,6 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
     setSubmitting(true)
     setErro(null)
     setSucesso(null)
-    
-
-  const profissionaisFiltrados = form.unidadeOrigemId
-    ? profissionais.filter((p) =>
-        p.unidades?.some((u) => u.unidade?.id === form.unidadeOrigemId)
-      )
-    : profissionais
     // Guardar arquivos antes de qualquer operação (evita problemas de closure/estado)
     const arquivosParaUpload = arquivosPdf.length > 0 ? [...arquivosPdf] : []
     console.log('📎 Arquivos para upload:', arquivosParaUpload.length, arquivosParaUpload.map(f => ({ nome: f.name, tamanho: f.size })))
@@ -369,6 +362,12 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
       setSubmitting(false)
     }
   }
+
+  const profissionaisFiltrados = form.unidadeOrigemId
+    ? profissionais.filter((p) =>
+        p.unidades?.some((u) => u.unidade?.id === form.unidadeOrigemId)
+      )
+    : profissionais
 
   if (!open) return null
 
@@ -523,33 +522,6 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                     }
                   }}
                   className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-0.5">Médico solicitante (opcional)</label>
-                  <select
-                    value={form.medicoSolicitanteId}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      setForm((f) => ({
-                        ...f,
-                        medicoSolicitanteId: val
-                      }))
-                    }}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="">Selecione o médico solicitante</option>
-                    {profissionaisFiltrados.map((p) => {
-                      const cboLabel = p.cboRelacao?.codigo
-                        ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
-                        : p.cbo || ''
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
-                  required
                 >
                   <option value="">Selecione a unidade</option>
                   {unidades.map((u) => {
@@ -557,6 +529,33 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                     return (
                       <option key={u.id} value={u.id}>
                         {valor}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-0.5">Médico solicitante *</label>
+                <select
+                  value={form.medicoSolicitanteId}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setForm((f) => ({
+                      ...f,
+                      medicoSolicitanteId: val
+                    }))
+                  }}
+                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                >
+                  <option value="">Selecione o médico solicitante</option>
+                  {profissionaisFiltrados.map((p) => {
+                    const cboLabel = p.cboRelacao?.codigo
+                      ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
+                      : p.cbo || ''
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
                       </option>
                     )
                   })}
