@@ -70,6 +70,29 @@ export class ProfissionaisController {
         });
       }
 
+      // GESTOR: só pode vincular profissionais à sua própria unidade
+      if (req.userTipo === 'GESTOR') {
+        const usuarioGestor = await prisma.usuario.findUnique({
+          where: { id: req.userId },
+          select: { unidadeId: true }
+        });
+
+        if (!usuarioGestor?.unidadeId) {
+          return res.status(400).json({
+            message: 'Gestor não possui unidade vinculada. Configure a unidade do gestor para cadastrar vínculos de profissionais.'
+          });
+        }
+
+        if (Array.isArray(unidadesIds) && unidadesIds.length > 0) {
+          const unidadesInvalidas = unidadesIds.filter((id: string) => id !== usuarioGestor.unidadeId);
+          if (unidadesInvalidas.length > 0) {
+            return res.status(403).json({
+              message: 'Gestor só pode vincular profissionais à sua própria unidade.'
+            });
+          }
+        }
+      }
+
       const profissional = await service.criarProfissional({
         nome,
         cns,
@@ -89,6 +112,51 @@ export class ProfissionaisController {
       const service = this.getService();
       const { id } = req.params;
       const { nome, cns, cboId, ativo, unidadesIds } = req.body;
+
+       // GESTOR: pode editar dados do profissional, mas só pode alterar vínculos da própria unidade
+       if (req.userTipo === 'GESTOR' && Array.isArray(unidadesIds)) {
+         const usuarioGestor = await prisma.usuario.findUnique({
+           where: { id: req.userId },
+           select: { unidadeId: true }
+         });
+
+         if (!usuarioGestor?.unidadeId) {
+           return res.status(400).json({
+             message: 'Gestor não possui unidade vinculada. Configure a unidade do gestor para alterar vínculos de profissionais.'
+           });
+         }
+
+         // Buscar vínculos atuais do profissional
+         const vinculosAtuais = await prisma.profissionalUnidade.findMany({
+           where: { profissionalId: id },
+           select: { unidadeId: true }
+         });
+
+         const atuaisIds = vinculosAtuais.map((v) => v.unidadeId);
+         const novaListaIds: string[] = unidadesIds;
+         const unidadeGestorId = usuarioGestor.unidadeId;
+
+         // Unidades diferentes da unidade do gestor que já existiam
+         const unidadesOutrasAtuais = atuaisIds.filter((uid) => uid !== unidadeGestorId);
+
+         // Verificar remoção indevida: gestor não pode remover vínculos de outras unidades
+         const removidasOutras = unidadesOutrasAtuais.filter((uid) => !novaListaIds.includes(uid));
+         if (removidasOutras.length > 0) {
+           return res.status(403).json({
+             message: 'Gestor não pode desvincular profissionais de outras unidades. Só é permitido desvincular da própria unidade.'
+           });
+         }
+
+         // Verificar adição indevida: gestor não pode adicionar vínculos de outras unidades
+         const adicionadasOutras = novaListaIds.filter(
+           (uid: string) => uid !== unidadeGestorId && !atuaisIds.includes(uid)
+         );
+         if (adicionadasOutras.length > 0) {
+           return res.status(403).json({
+             message: 'Gestor só pode adicionar vínculos de profissionais à sua própria unidade.'
+           });
+         }
+       }
 
       const profissional = await service.atualizarProfissional(id, {
         nome,

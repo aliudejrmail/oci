@@ -42,6 +42,11 @@ interface Cbo {
 
 export default function Profissionais() {
   const { usuario } = useAuth()
+  const isAdmin = usuario?.tipo === 'ADMIN'
+  const isGestor = usuario?.tipo === 'GESTOR'
+  const isAutorizador = usuario?.tipo === 'AUTORIZADOR'
+  const podeGerenciarProfissionais = isAdmin || isGestor || isAutorizador
+  const gestorUnidadeId = isGestor ? (usuario?.unidadeId || null) : null
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
   const [unidades, setUnidades] = useState<UnidadeSaude[]>([])
   const [cbos, setCbos] = useState<Cbo[]>([])
@@ -242,14 +247,21 @@ export default function Profissionais() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Profissionais</h1>
           <p className="text-gray-600 mt-1">Gestão de profissionais autorizadores</p>
+          {isGestor && usuario?.unidade && (
+            <p className="text-xs text-gray-500 mt-1">
+              Como gestor da unidade {usuario.unidade.nome}, você só pode adicionar ou remover vínculos de profissionais referentes a esta unidade.
+            </p>
+          )}
         </div>
-        <button
-          onClick={abrirModalNovo}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
-        >
-          <Plus size={20} />
-          Novo Profissional
-        </button>
+        {podeGerenciarProfissionais && (
+          <button
+            onClick={abrirModalNovo}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+          >
+            <Plus size={20} />
+            Novo Profissional
+          </button>
+        )}
       </div>
 
       {erroApi && (
@@ -346,24 +358,28 @@ export default function Profissionais() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => abrirModalEditar(profissional)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Editar"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleToggleAtivo(profissional)}
-                          className={profissional.ativo 
-                            ? "text-orange-600 hover:text-orange-800" 
-                            : "text-green-600 hover:text-green-800"
-                          }
-                          title={profissional.ativo ? "Inativar" : "Ativar"}
-                        >
-                          {profissional.ativo ? <PowerOff size={18} /> : <Power size={18} />}
-                        </button>
-                        {usuario?.tipo === 'ADMIN' && (
+                        {podeGerenciarProfissionais && (
+                          <>
+                            <button
+                              onClick={() => abrirModalEditar(profissional)}
+                              className="text-blue-600 hover:text-blue-800"
+                              title="Editar"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleToggleAtivo(profissional)}
+                              className={profissional.ativo 
+                                ? "text-orange-600 hover:text-orange-800" 
+                                : "text-green-600 hover:text-green-800"
+                              }
+                              title={profissional.ativo ? "Inativar" : "Ativar"}
+                            >
+                              {profissional.ativo ? <PowerOff size={18} /> : <Power size={18} />}
+                            </button>
+                          </>
+                        )}
+                        {isAdmin && (
                           <button
                             onClick={() => handleExcluir(profissional.id)}
                             className="text-red-600 hover:text-red-800"
@@ -465,6 +481,11 @@ export default function Profissionais() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Unidades de Saúde
                 </label>
+                {isGestor && gestorUnidadeId && (
+                  <p className="text-xs text-gray-500 mb-2">
+                    Você só pode marcar ou desmarcar a unidade em que está lotado; vínculos com outras unidades são apenas para visualização.
+                  </p>
+                )}
                 <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto p-2 space-y-2">
                   {unidades.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">Nenhuma unidade disponível</p>
@@ -474,9 +495,13 @@ export default function Profissionais() {
                         key={unidade.id}
                         className="flex items-start gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
                       >
+                        {(() => {
+                          const podeAlterarUnidade = !isGestor || (gestorUnidadeId && unidade.id === gestorUnidadeId)
+                          const checked = form.unidadesIds.includes(unidade.id)
+                          return (
                         <input
                           type="checkbox"
-                          checked={form.unidadesIds.includes(unidade.id)}
+                          checked={checked}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setForm({ ...form, unidadesIds: [...form.unidadesIds, unidade.id] })
@@ -484,9 +509,11 @@ export default function Profissionais() {
                               setForm({ ...form, unidadesIds: form.unidadesIds.filter(id => id !== unidade.id) })
                             }
                           }}
-                          disabled={submitting}
+                          disabled={submitting || !podeAlterarUnidade}
                           className="mt-0.5"
                         />
+                          )
+                        })()}
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-gray-900 truncate">{unidade.nome}</div>
                           <div className="text-xs text-gray-500">CNES: {unidade.cnes}</div>

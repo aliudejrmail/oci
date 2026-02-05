@@ -20,6 +20,23 @@ interface ProcedimentoExecucao {
   dataColetaMaterialBiopsia?: string | null
   dataRegistroResultadoBiopsia?: string | null
   profissional?: string | null
+  unidadeExecutoraId?: string | null
+  unidadeExecutora?: string | null
+}
+
+interface ProfissionalOption {
+  id: string
+  nome: string
+  cns: string
+  cboRelacao?: {
+    codigo: string
+    descricao: string
+  } | null
+  unidades?: {
+    unidade?: {
+      id: string
+    } | null
+  }[]
 }
 
 /** Reconhece biópsia pelo nome (com ou sem acento: biópsia, biopsia). */
@@ -101,6 +118,8 @@ export default function RegistroProcedimentosModal({
   /** Lista completa para validação e status (sempre inclui REALIZADO/DISPENSADO). */
   const execucoesParaStatus = execucoesCompletasParaModal
   const isAdmin = usuario?.tipo === 'ADMIN'
+  const [profissionais, setProfissionais] = useState<ProfissionalOption[]>([])
+  const [carregandoProfissionais, setCarregandoProfissionais] = useState(false)
   const [procedimentos, setProcedimentos] = useState<Array<{
     execucaoId: string
     procedimentoId: string
@@ -113,6 +132,8 @@ export default function RegistroProcedimentosModal({
     /** Data do agendamento (YYYY-MM-DD), quando status foi AGENDADO; usada para restringir a data de execução */
     dataAgendamento: string
     dataExecucao: string
+    unidadeExecutoraId: string
+    unidadeExecutoraNome: string
     ehBiopsia: boolean
     /** true se for consulta médica em atenção especializada (presencial ou teleconsulta) */
     ehConsultaEspecializada: boolean
@@ -133,6 +154,21 @@ export default function RegistroProcedimentosModal({
     if (!proc.dataAgendamento || proc.status !== 'AGENDADO') return true
     return hoje >= proc.dataAgendamento
   }
+
+  useEffect(() => {
+    if (!open) return
+    setCarregandoProfissionais(true)
+    api
+      .get('/profissionais?ativo=true&limit=200')
+      .then((res) => {
+        setProfissionais(res.data?.profissionais || [])
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar profissionais para registro de procedimentos:', err)
+        setProfissionais([])
+      })
+      .finally(() => setCarregandoProfissionais(false))
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -159,6 +195,8 @@ export default function RegistroProcedimentosModal({
         ? new Date((exec as any).dataAgendamento).toISOString().split('T')[0]
         : ''
       const ehAgendado = exec.status === 'AGENDADO'
+      const unidadeExecutoraId = (exec as any).unidadeExecutoraId || ''
+      const unidadeExecutoraNome = (exec as any).unidadeExecutora || ''
       return {
         execucaoId: exec.id,
         procedimentoId: exec.procedimento.id,
@@ -171,6 +209,8 @@ export default function RegistroProcedimentosModal({
         dataExecucao: exec.dataExecucao
           ? new Date(exec.dataExecucao).toISOString().split('T')[0]
           : ehAgendado && dataAgendamentoStr ? dataAgendamentoStr : hoje,
+        unidadeExecutoraId,
+        unidadeExecutoraNome,
         ehBiopsia,
         ehConsultaEspecializada,
         ehAnatomoPatologicoObrigatorio,
@@ -249,6 +289,13 @@ export default function RegistroProcedimentosModal({
     novos[index].medicoExecutante = value
     setProcedimentos(novos)
     if (erro) setErro(null)
+  }
+
+  const getProfissionaisDaUnidade = (unidadeId: string) => {
+    if (!unidadeId) return [] as ProfissionalOption[]
+    return profissionais.filter((p) =>
+      p.unidades?.some((u) => u.unidade?.id === unidadeId)
+    )
   }
 
   const handleExcluirExecucao = async (execucaoId: string, index: number) => {
@@ -601,6 +648,18 @@ export default function RegistroProcedimentosModal({
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (
                       <div className="mt-1.5 ml-8 space-y-1.5">
+                        {/* Unidade executante (vinda do agendamento) */}
+                        {proc.unidadeExecutoraNome && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                              Unidade executante
+                            </label>
+                            <p className="px-2 py-1 text-[11px] bg-gray-50 border border-gray-200 rounded text-gray-800">
+                              {proc.unidadeExecutoraNome}
+                            </p>
+                          </div>
+                        )}
+
                         <div>
                           <label
                             htmlFor={`data-${proc.execucaoId}`}
@@ -635,15 +694,52 @@ export default function RegistroProcedimentosModal({
                             >
                               Médico executante <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="text"
-                              id={`medico-${proc.execucaoId}`}
-                              value={proc.medicoExecutante}
-                              onChange={(e) => handleMedicoExecutanteChange(index, e.target.value)}
-                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                              disabled={submitting}
-                              placeholder="Informe o médico que executou a consulta/teleconsulta"
-                            />
+                            {(() => {
+                              const profissionaisDaUnidade = getProfissionaisDaUnidade(proc.unidadeExecutoraId)
+                              if (profissionaisDaUnidade.length > 0) {
+                                const selecionado = profissionaisDaUnidade.find(
+                                  (p) => p.nome === proc.medicoExecutante
+                                )
+                                const valorSelect = selecionado ? selecionado.id : ''
+                                return (
+                                  <select
+                                    id={`medico-${proc.execucaoId}`}
+                                    value={valorSelect}
+                                    onChange={(e) => {
+                                      const prof = profissionaisDaUnidade.find((p) => p.id === e.target.value)
+                                      handleMedicoExecutanteChange(index, prof ? prof.nome : '')
+                                    }}
+                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    disabled={submitting || carregandoProfissionais}
+                                  >
+                                    <option value="">Selecione o médico executante</option>
+                                    {profissionaisDaUnidade.map((p) => {
+                                      const cboLabel = p.cboRelacao?.codigo
+                                        ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
+                                        : ''
+                                      return (
+                                        <option key={p.id} value={p.id}>
+                                          {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
+                                        </option>
+                                      )
+                                    })}
+                                  </select>
+                                )
+                              }
+
+                              // Fallback: sem profissionais vinculados à unidade, permitir digitação livre
+                              return (
+                                <input
+                                  type="text"
+                                  id={`medico-${proc.execucaoId}`}
+                                  value={proc.medicoExecutante}
+                                  onChange={(e) => handleMedicoExecutanteChange(index, e.target.value)}
+                                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                  disabled={submitting}
+                                  placeholder="Informe o médico que executou a consulta/teleconsulta"
+                                />
+                              )
+                            })()}
                           </div>
                         )}
                       </div>

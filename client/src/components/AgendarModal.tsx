@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Calendar } from 'lucide-react'
 import { api } from '../services/api'
 import { formatarDataHoraSemTimezone } from '../utils/date-format'
+import { isConsultaMedicaEspecializada } from '../utils/procedimento-display'
 
 interface UnidadeOption {
   id: string
@@ -10,11 +11,28 @@ interface UnidadeOption {
 }
 
 
+interface ProfissionalOption {
+  id: string
+  nome: string
+  cns: string
+  cboRelacao?: {
+    codigo: string
+    descricao: string
+  } | null
+  unidades?: {
+    unidade?: {
+      id: string
+    } | null
+  }[]
+}
+
+
 interface ExecucaoItem {
   id: string
   status: string
   dataAgendamento?: string | null
   unidadeExecutora?: string | null
+  profissional?: string | null
   procedimento: {
     id: string
     nome: string
@@ -50,6 +68,9 @@ export default function AgendarModal({
   const [horaAgendamento, setHoraAgendamento] = useState('08:00')
   const [unidadeExecutora, setUnidadeExecutora] = useState('')
   const [unidadeExecutoraId, setUnidadeExecutoraId] = useState('')
+  const [medicoExecutante, setMedicoExecutante] = useState('')
+  const [profissionais, setProfissionais] = useState<ProfissionalOption[]>([])
+  const [carregandoProfissionais, setCarregandoProfissionais] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
@@ -74,6 +95,22 @@ export default function AgendarModal({
       setUnidadeExecutora('')
       setUnidadeExecutoraId('')
     }
+    // Para reagendamento com unidade fixa: tentar reaproveitar o médico executante já informado
+    if (reagendamentoUnidadeFixa) {
+      const execComMedico = execucoesAgendaveis.find(
+        (e) =>
+          e.status === 'AGENDADO' &&
+          !!e.profissional &&
+          isConsultaMedicaEspecializada(e.procedimento.nome)
+      )
+      if (execComMedico?.profissional) {
+        setMedicoExecutante(execComMedico.profissional)
+      } else {
+        setMedicoExecutante('')
+      }
+    } else {
+      setMedicoExecutante('')
+    }
 
     const carregar = async () => {
       if (reagendamentoUnidadeFixa) {
@@ -97,6 +134,28 @@ export default function AgendarModal({
     }
     carregar()
   }, [open, reagendamentoUnidadeFixa, unidadeExecutoraPreenchida])
+
+  useEffect(() => {
+    if (!open) return
+    setCarregandoProfissionais(true)
+    api
+      .get('/profissionais?ativo=true&limit=200')
+      .then((res) => {
+        setProfissionais(res.data?.profissionais || [])
+      })
+      .catch((err) => {
+        console.error('Erro ao carregar profissionais para agendamento:', err)
+        setProfissionais([])
+      })
+      .finally(() => setCarregandoProfissionais(false))
+  }, [open])
+
+  const getProfissionaisDaUnidade = (unidadeId: string) => {
+    if (!unidadeId) return [] as ProfissionalOption[]
+    return profissionais.filter((p) =>
+      p.unidades?.some((u) => u.unidade?.id === unidadeId)
+    )
+  }
 
   const toggleSelecao = (id: string) => {
     setSelectedIds((prev) => {
@@ -134,18 +193,33 @@ export default function AgendarModal({
       setErro('Selecione a unidade executante.')
       return
     }
+
+    // Verificar se há alguma consulta/teleconsulta médica em atenção especializada selecionada
+    const temConsultaEspecializadaSelecionada = execucoesAgendaveis.some(
+      (e) => selectedIds.has(e.id) && isConsultaMedicaEspecializada(e.procedimento.nome)
+    )
+
+    if (temConsultaEspecializadaSelecionada && !medicoExecutante.trim()) {
+      setErro('Informe o médico executante para as consultas/teleconsultas médicas em atenção especializada.')
+      return
+    }
     const dataTimeISO = `${dataAgendamento}T${horaAgendamento}:00`
     setSubmitting(true)
     try {
       let sucessoCount = 0
       for (const id of selectedIds) {
-        await api.patch(`/solicitacoes/execucoes/${id}`, {
+        const exec = execucoesAgendaveis.find((e) => e.id === id)
+        const payload: Record<string, unknown> = {
           dataAgendamento: dataTimeISO,
           unidadeExecutora: unidadeParaEnvio.trim(),
           unidadeExecutoraId: unidadeIdParaEnvio || undefined,
           executanteId: null,
           status: 'AGENDADO'
-        })
+        }
+        if (exec && isConsultaMedicaEspecializada(exec.procedimento.nome) && medicoExecutante.trim()) {
+          payload.profissional = medicoExecutante.trim()
+        }
+        await api.patch(`/solicitacoes/execucoes/${id}`, payload)
         sucessoCount++
       }
       setSucesso(`${sucessoCount} item(ns) agendado(s) com sucesso.`)
@@ -296,6 +370,7 @@ export default function AgendarModal({
                   if (u) {
                     setUnidadeExecutoraId(u.id)
                     setUnidadeExecutora(`${u.cnes} - ${u.nome}`)
+                    setMedicoExecutante('')
                   } else {
                     setUnidadeExecutoraId('')
                     setUnidadeExecutora('')
@@ -312,6 +387,64 @@ export default function AgendarModal({
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {/* Médico executante para consultas/teleconsultas em atenção especializada */}
+          {execucoesAgendaveis.some((e) => isConsultaMedicaEspecializada(e.procedimento.nome)) && (
+            <div>
+              <label htmlFor="medicoExecutante" className="block text-xs font-medium text-gray-700 mb-0.5">
+                Médico executante (consultas/teleconsultas em atenção especializada)
+                {selectedIds.size > 0 &&
+                  execucoesAgendaveis.some(
+                    (e) => selectedIds.has(e.id) && isConsultaMedicaEspecializada(e.procedimento.nome)
+                  ) && <span className="text-red-500"> *</span>}
+              </label>
+              {(() => {
+                const unidadeIdParaFiltro = reagendamentoUnidadeFixa ? '' : unidadeExecutoraId
+                const profissionaisDaUnidade = getProfissionaisDaUnidade(unidadeIdParaFiltro)
+                if (profissionaisDaUnidade.length > 0) {
+                  const selecionado = profissionaisDaUnidade.find((p) => p.nome === medicoExecutante)
+                  const valorSelect = selecionado ? selecionado.id : ''
+                  return (
+                    <select
+                      id="medicoExecutante"
+                      value={valorSelect}
+                      onChange={(e) => {
+                        const prof = profissionaisDaUnidade.find((p) => p.id === e.target.value)
+                        setMedicoExecutante(prof ? prof.nome : '')
+                      }}
+                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                      disabled={submitting || carregandoProfissionais || !unidadeIdParaFiltro}
+                    >
+                      <option value="">Selecione o médico executante</option>
+                      {profissionaisDaUnidade.map((p) => {
+                        const cboLabel = p.cboRelacao?.codigo
+                          ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
+                          : ''
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
+                          </option>
+                        )
+                      })}
+                    </select>
+                  )
+                }
+
+                // Fallback: sem profissionais vinculados (ou sem unidade definida), permitir digitação livre
+                return (
+                  <input
+                    id="medicoExecutante"
+                    type="text"
+                    value={medicoExecutante}
+                    onChange={(e) => setMedicoExecutante(e.target.value)}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Informe o médico que executará as consultas/teleconsultas"
+                    disabled={submitting}
+                  />
+                )
+              })()}
             </div>
           )}
 
