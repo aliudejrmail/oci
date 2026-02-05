@@ -26,6 +26,25 @@ interface UnidadeOption {
   executante?: number
 }
 
+interface ProfissionalOption {
+  id: string
+  nome: string
+  cns: string
+  cbo?: string
+  cboRelacao?: {
+    id: string
+    codigo: string
+    descricao: string
+  } | null
+  unidades?: {
+    unidade?: {
+      id: string
+      nome: string
+      cnes: string
+    } | null
+  }[]
+}
+
 interface NovaSolicitacaoModalProps {
   open: boolean
   onClose: () => void
@@ -41,6 +60,7 @@ const formInicial = {
   unidadeOrigemId: '',
   unidadeDestino: '',
   unidadeDestinoId: '',
+   medicoSolicitanteId: '',
   observacoes: ''
 }
 
@@ -55,6 +75,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
   const [pacientesBusca, setPacientesBusca] = useState<PacienteOption[]>([])
   const [ocis, setOcis] = useState<OciOption[]>([])
   const [unidades, setUnidades] = useState<UnidadeOption[]>([])
+  const [profissionais, setProfissionais] = useState<ProfissionalOption[]>([])
   const [loadingDados, setLoadingDados] = useState(false)
   const [loadingPacientes, setLoadingPacientes] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -122,6 +143,14 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
         ])
         setOcis(resOcis.data ?? [])
         setUnidades(resUnidades.data ?? [])
+
+        try {
+          const resProfissionais = await api.get('/profissionais?ativo=true&limit=200')
+          const lista = (resProfissionais.data?.profissionais ?? resProfissionais.data ?? []) as ProfissionalOption[]
+          setProfissionais(lista)
+        } catch (e) {
+          console.error('Erro ao carregar profissionais (médicos solicitantes):', e)
+        }
       } catch (e) {
         console.error('Erro ao carregar OCIs/unidades:', e)
         setErro('Não foi possível carregar OCIs e unidades.')
@@ -251,14 +280,20 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.pacienteId || !form.ociId || !form.unidadeOrigem.trim()) {
-      setErro('Selecione ou cadastre um paciente, OCI e Unidade Solicitante.')
+    if (!form.pacienteId || !form.ociId || !form.unidadeOrigem.trim() || !form.medicoSolicitanteId) {
+      setErro('Selecione ou cadastre um paciente, OCI, Unidade Solicitante e Médico Solicitante.')
       return
     }
     setSubmitting(true)
     setErro(null)
     setSucesso(null)
     
+
+  const profissionaisFiltrados = form.unidadeOrigemId
+    ? profissionais.filter((p) =>
+        p.unidades?.some((u) => u.unidade?.id === form.unidadeOrigemId)
+      )
+    : profissionais
     // Guardar arquivos antes de qualquer operação (evita problemas de closure/estado)
     const arquivosParaUpload = arquivosPdf.length > 0 ? [...arquivosPdf] : []
     console.log('📎 Arquivos para upload:', arquivosParaUpload.length, arquivosParaUpload.map(f => ({ nome: f.name, tamanho: f.size })))
@@ -271,6 +306,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
         unidadeOrigemId: form.unidadeOrigemId || undefined,
         unidadeDestino: form.unidadeDestino.trim() || undefined,
         unidadeDestinoId: form.unidadeDestinoId || undefined,
+        medicoSolicitanteId: form.medicoSolicitanteId || undefined,
         observacoes: form.observacoes.trim() || undefined
       })
       
@@ -487,6 +523,32 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                     }
                   }}
                   className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">Médico solicitante (opcional)</label>
+                  <select
+                    value={form.medicoSolicitanteId}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setForm((f) => ({
+                        ...f,
+                        medicoSolicitanteId: val
+                      }))
+                    }}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">Selecione o médico solicitante</option>
+                    {profissionaisFiltrados.map((p) => {
+                      const cboLabel = p.cboRelacao?.codigo
+                        ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
+                        : p.cbo || ''
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
                   required
                 >
                   <option value="">Selecione a unidade</option>

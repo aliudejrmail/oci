@@ -35,6 +35,7 @@ export class SolicitacoesService {
     unidadeDestino?: string;
     unidadeOrigemId?: string;
     unidadeDestinoId?: string;
+    medicoSolicitanteId?: string;
     criadoPorId: string;
   }) {
     // Buscar OCI para obter tipo e prazo
@@ -84,6 +85,7 @@ export class SolicitacoesService {
           unidadeDestino: data.unidadeDestino,
           unidadeOrigemId: data.unidadeOrigemId,
           unidadeDestinoId: data.unidadeDestinoId,
+          medicoSolicitanteId: data.medicoSolicitanteId,
           criadoPorId: data.criadoPorId,
           status: StatusSolicitacao.PENDENTE
         }
@@ -135,6 +137,13 @@ export class SolicitacoesService {
             procedimento: {
               ordem: 'asc'
             }
+          }
+        },
+        medicoSolicitante: {
+          select: {
+            id: true,
+            nome: true,
+            cns: true
           }
         },
         criadoPor: {
@@ -227,6 +236,7 @@ export class SolicitacoesService {
     unidadeOrigemId?: string | null;
     unidadeDestinoId?: string | null;
     ociId?: string;
+    medicoSolicitanteId?: string | null;
   }) {
     // Validar campos obrigatórios
     if (data.unidadeOrigem !== undefined && !data.unidadeOrigem.trim()) {
@@ -286,6 +296,7 @@ export class SolicitacoesService {
             unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
             unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
             unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
+            medicoSolicitanteId: data.medicoSolicitanteId !== undefined ? data.medicoSolicitanteId : solicitacaoAtual.medicoSolicitanteId,
             updatedAt: new Date()
           }
         });
@@ -317,6 +328,7 @@ export class SolicitacoesService {
           unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
           unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
           unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
+          medicoSolicitanteId: data.medicoSolicitanteId !== undefined ? data.medicoSolicitanteId : solicitacaoAtual.medicoSolicitanteId,
           updatedAt: new Date()
         }
       });
@@ -428,6 +440,13 @@ export class SolicitacoesService {
                     nome: true
                   }
                 }
+              }
+            },
+            medicoSolicitante: {
+              select: {
+                id: true,
+                nome: true,
+                cns: true
               }
             },
             execucoes: {

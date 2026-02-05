@@ -170,7 +170,7 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const { observacoes, unidadeOrigem, unidadeDestino, unidadeOrigemId, unidadeDestinoId, ociId } = req.body;
+      const { observacoes, unidadeOrigem, unidadeDestino, unidadeOrigemId, unidadeDestinoId, ociId, medicoSolicitanteId } = req.body;
 
       if (!id || typeof id !== 'string') {
         return res.status(400).json({ message: 'ID da solicitação é obrigatório' });
@@ -213,7 +213,8 @@ export class SolicitacoesController {
         unidadeDestino,
         unidadeOrigemId,
         unidadeDestinoId,
-        ociId
+        ociId,
+        medicoSolicitanteId
       });
 
       return res.json(solicitacao);

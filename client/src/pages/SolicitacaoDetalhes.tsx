@@ -308,6 +308,14 @@ export default function SolicitacaoDetalhes() {
             <h3 className="text-xs font-medium text-gray-500 mb-0.5">Status</h3>
             <p className="text-sm font-medium text-gray-900">{solicitacao.status}</p>
           </div>
+          {solicitacao.medicoSolicitante && (
+            <div>
+              <h3 className="text-xs font-medium text-gray-500 mb-0.5">Médico solicitante</h3>
+              <p className="text-sm font-medium text-gray-900 truncate" title={solicitacao.medicoSolicitante.nome}>
+                {solicitacao.medicoSolicitante.nome}
+              </p>
+            </div>
+          )}
           <div>
             <h3 className="text-xs font-medium text-gray-500 mb-0.5">Data de Cadastro</h3>
             <p className="text-sm font-medium text-gray-900">

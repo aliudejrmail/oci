@@ -17,6 +17,9 @@ interface Solicitacao {
     nome: string
     tipo: string
   }
+  medicoSolicitante?: {
+    nome: string
+  } | null
   status: string
   dataSolicitacao: string
   dataPrazo: string
@@ -249,6 +252,9 @@ export default function Solicitacoes() {
                   OCI
                 </th>
                 <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-tight">
+                  Médico Solicitante
+                </th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-tight">
                   Status
                 </th>
                 <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-tight">
@@ -271,7 +277,7 @@ export default function Solicitacoes() {
             <tbody className="bg-white divide-y divide-gray-200">
               {solicitacoes.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-2 py-4 text-center text-xs text-gray-500">
+                  <td colSpan={10} className="px-2 py-4 text-center text-xs text-gray-500">
                     Nenhuma solicitação encontrada
                   </td>
                 </tr>
@@ -306,6 +312,13 @@ export default function Solicitacoes() {
                         </div>
                         <div className="text-[10px] text-gray-500">
                           {solicitacao.oci.tipo === 'GERAL' ? 'Geral' : 'Oncológico'}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap">
+                        <div className="text-[11px] text-gray-900 truncate max-w-[150px]" title={solicitacao.medicoSolicitante?.nome || ''}>
+                          {solicitacao.medicoSolicitante?.nome || (
+                            <span className="text-gray-400 italic text-[10px]">Não informado</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-2 py-2 whitespace-nowrap">

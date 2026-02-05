@@ -17,6 +17,12 @@ interface UnidadeOption {
   ativo: boolean
 }
 
+interface ProfissionalOption {
+  id: string
+  nome: string
+  cns: string
+}
+
 interface EditarSolicitacaoModalProps {
   open: boolean
   onClose: () => void
@@ -44,12 +50,15 @@ export default function EditarSolicitacaoModal({
     unidadeOrigemBusca: '',
     unidadeDestinoBusca: '',
     ociId: '',
-    ociBusca: ''
+    ociBusca: '',
+    medicoSolicitanteId: ''
   })
   const [ocis, setOcis] = useState<OciOption[]>([])
   const [unidades, setUnidades] = useState<UnidadeOption[]>([])
+  const [profissionais, setProfissionais] = useState<ProfissionalOption[]>([])
   const [loadingOcis, setLoadingOcis] = useState(false)
   const [loadingUnidades, setLoadingUnidades] = useState(false)
+  const [loadingProfissionais, setLoadingProfissionais] = useState(false)
   const [showOciDropdown, setShowOciDropdown] = useState(false)
   const [showUnidadeOrigemDropdown, setShowUnidadeOrigemDropdown] = useState(false)
   const [showUnidadeDestinoDropdown, setShowUnidadeDestinoDropdown] = useState(false)
@@ -87,6 +96,7 @@ export default function EditarSolicitacaoModal({
       const uDestino = solicitacao.unidadeDestino || ''
       const uOrigemId = solicitacao.unidadeOrigemId || solicitacao.unidadeOrigemRef?.id || ''
       const uDestinoId = solicitacao.unidadeDestinoId || solicitacao.unidadeDestinoRef?.id || ''
+      const medicoSolicitanteId = solicitacao.medicoSolicitanteId || solicitacao.medicoSolicitante?.id || ''
       setForm({
         observacoes: solicitacao.observacoes || '',
         unidadeOrigem: uOrigem,
@@ -96,7 +106,8 @@ export default function EditarSolicitacaoModal({
         unidadeOrigemBusca: uOrigem,
         unidadeDestinoBusca: uDestino,
         ociId,
-        ociBusca
+        ociBusca,
+        medicoSolicitanteId
       })
       setArquivosPdf([])
       setErro(null)
@@ -121,6 +132,20 @@ export default function EditarSolicitacaoModal({
         .then((res: { data: UnidadeOption[] }) => setUnidades(Array.isArray(res.data) ? res.data : []))
         .catch(() => setUnidades([]))
         .finally(() => setLoadingUnidades(false))
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (open) {
+      setLoadingProfissionais(true)
+      api.get('/profissionais?ativo=true&limit=200')
+        .then((res: { data: { profissionais?: ProfissionalOption[] } | ProfissionalOption[] }) => {
+          const data = res.data as any
+          const lista = Array.isArray(data) ? data : data.profissionais || []
+          setProfissionais(lista)
+        })
+        .catch(() => setProfissionais([]))
+        .finally(() => setLoadingProfissionais(false))
     }
   }, [open])
 
@@ -240,6 +265,11 @@ export default function EditarSolicitacaoModal({
       return
     }
 
+    if (!form.medicoSolicitanteId) {
+      setErro('Médico Solicitante é obrigatório')
+      return
+    }
+
     setSubmitting(true)
     try {
       const { api } = await import('../services/api')
@@ -249,7 +279,8 @@ export default function EditarSolicitacaoModal({
         unidadeOrigem: form.unidadeOrigem.trim(),
         unidadeOrigemId: form.unidadeOrigemId || null,
         unidadeDestino: form.unidadeDestino.trim() || null,
-        unidadeDestinoId: form.unidadeDestinoId || null
+        unidadeDestinoId: form.unidadeDestinoId || null,
+        medicoSolicitanteId: form.medicoSolicitanteId
       }
       if (podeAlterarOci && form.ociId && form.ociId !== (solicitacao?.ociId || solicitacao?.oci?.id)) {
         payload.ociId = form.ociId
@@ -511,6 +542,31 @@ export default function EditarSolicitacaoModal({
             <p className="text-xs text-gray-500 mt-1">
               Opcional: Unidade Executante onde os procedimentos serão realizados
             </p>
+          </div>
+
+          {/* Médico Solicitante */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+              Médico Solicitante <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.medicoSolicitanteId}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  medicoSolicitanteId: e.target.value
+                }))
+              }
+              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              disabled={loadingProfissionais}
+            >
+              <option value="">Selecione o médico solicitante</option>
+              {profissionais.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Observações */}

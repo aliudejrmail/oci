@@ -298,6 +298,7 @@ model SolicitacaoOci {
   unidadeDestino       String? // Unidade que executará (legado/display)
   unidadeOrigemId      String? // FK para UnidadeSaude
   unidadeDestinoId     String? // FK para UnidadeSaude
+  medicoSolicitanteId  String? // FK para Profissional (médico que solicitou)
   deletedAt            DateTime? // Soft delete para auditoria
   // APAC - validade 2 competências (Portaria SAES 1640/2024, Manual PMAE/OCI)
   competenciaInicioApac    String?  // YYYYMM ex.: 202601
@@ -327,6 +328,7 @@ model SolicitacaoOci {
   atualizadoPor    Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
   unidadeOrigemRef UnidadeSaude?          @relation("UnidadeOrigem", fields: [unidadeOrigemId], references: [id], onDelete: SetNull)
   unidadeDestinoRef UnidadeSaude?         @relation("UnidadeDestino", fields: [unidadeDestinoId], references: [id], onDelete: SetNull)
+  medicoSolicitante Profissional?         @relation(fields: [medicoSolicitanteId], references: [id], onDelete: SetNull)
   execucoes        ExecucaoProcedimento[]
   alerta           AlertaPrazo?           @relation("Alertas")
   anexos           AnexoSolicitacao[]
@@ -339,6 +341,7 @@ model SolicitacaoOci {
   @@index([unidadeOrigem])
   @@index([competenciaFimApac])
   @@index([deletedAt])
+  @@index([medicoSolicitanteId])
   @@map("solicitacoes_oci")
 }
 

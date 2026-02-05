@@ -19,6 +19,7 @@ interface ProcedimentoExecucao {
   resultadoBiopsia?: string | null
   dataColetaMaterialBiopsia?: string | null
   dataRegistroResultadoBiopsia?: string | null
+  profissional?: string | null
 }
 
 /** Reconhece biópsia pelo nome (com ou sem acento: biópsia, biopsia). */
@@ -120,6 +121,7 @@ export default function RegistroProcedimentosModal({
     resultadoBiopsia: string
     dataColetaMaterialBiopsia: string
     dataRegistroResultadoBiopsia: string
+    medicoExecutante: string
   }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [excluindo, setExcluindo] = useState<string | null>(null)
@@ -174,7 +176,8 @@ export default function RegistroProcedimentosModal({
         ehAnatomoPatologicoObrigatorio,
         resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
         dataColetaMaterialBiopsia: dataColeta,
-        dataRegistroResultadoBiopsia: dataRegistro
+        dataRegistroResultadoBiopsia: dataRegistro,
+        medicoExecutante: (exec as any).profissional || ''
       }
     })
 
@@ -237,6 +240,13 @@ export default function RegistroProcedimentosModal({
   const handleDataResultadoChange = (index: number, value: string) => {
     const novos = [...procedimentos]
     novos[index].dataRegistroResultadoBiopsia = value
+    setProcedimentos(novos)
+    if (erro) setErro(null)
+  }
+
+  const handleMedicoExecutanteChange = (index: number, value: string) => {
+    const novos = [...procedimentos]
+    novos[index].medicoExecutante = value
     setProcedimentos(novos)
     if (erro) setErro(null)
   }
@@ -305,6 +315,15 @@ export default function RegistroProcedimentosModal({
       return
     }
 
+    // Consultas/teleconsultas especializadas: exigir médico executante quando marcadas como REALIZADO
+    const consultaSemMedicoExecutante = procedimentosRealizados.find(
+      (p) => p.ehConsultaEspecializada && !p.medicoExecutante?.trim()
+    )
+    if (consultaSemMedicoExecutante) {
+      setErro('Para consultas e teleconsultas médicas em atenção especializada, informe o médico executante.')
+      return
+    }
+
     // Validar que todos os procedimentos marcados como realizados têm data
     const semData = procedimentosRealizados.find(p => !p.dataExecucao)
     if (semData) {
@@ -346,6 +365,9 @@ export default function RegistroProcedimentosModal({
         const payload: Record<string, unknown> = {
           status: 'REALIZADO',
           dataExecucao: dataLocal.toISOString()
+        }
+        if (proc.ehConsultaEspecializada && proc.medicoExecutante?.trim()) {
+          payload.profissional = proc.medicoExecutante.trim()
         }
         if (proc.ehAnatomoPatologicoObrigatorio && proc.dataColetaMaterialBiopsia && proc.dataRegistroResultadoBiopsia) {
           const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
@@ -578,30 +600,52 @@ export default function RegistroProcedimentosModal({
 
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (
-                      <div className="mt-1.5 ml-8">
-                        <label
-                          htmlFor={`data-${proc.execucaoId}`}
-                          className="block text-xs font-medium text-gray-700 mb-0.5"
-                        >
-                          Data de Execução <span className="text-red-500">*</span>
-                          {proc.dataAgendamento && (
-                            <span className="text-blue-600 font-normal ml-1">(data do agendamento)</span>
-                          )}
-                        </label>
-                        <div className="relative">
-                          <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                          <input
-                            type="date"
-                            id={`data-${proc.execucaoId}`}
-                            value={proc.dataExecucao}
-                            onChange={(e) => handleDataChange(index, e.target.value)}
-                            className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            disabled={submitting}
-                            required
-                            min={proc.dataAgendamento || undefined}
-                            max={hoje}
-                          />
+                      <div className="mt-1.5 ml-8 space-y-1.5">
+                        <div>
+                          <label
+                            htmlFor={`data-${proc.execucaoId}`}
+                            className="block text-xs font-medium text-gray-700 mb-0.5"
+                          >
+                            Data de Execução <span className="text-red-500">*</span>
+                            {proc.dataAgendamento && (
+                              <span className="text-blue-600 font-normal ml-1">(data do agendamento)</span>
+                            )}
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`data-${proc.execucaoId}`}
+                              value={proc.dataExecucao}
+                              onChange={(e) => handleDataChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              required
+                              min={proc.dataAgendamento || undefined}
+                              max={hoje}
+                            />
+                          </div>
                         </div>
+
+                        {proc.ehConsultaEspecializada && (
+                          <div>
+                            <label
+                              htmlFor={`medico-${proc.execucaoId}`}
+                              className="block text-xs font-medium text-gray-700 mb-0.5"
+                            >
+                              Médico executante <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              id={`medico-${proc.execucaoId}`}
+                              value={proc.medicoExecutante}
+                              onChange={(e) => handleMedicoExecutanteChange(index, e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              placeholder="Informe o médico que executou a consulta/teleconsulta"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
