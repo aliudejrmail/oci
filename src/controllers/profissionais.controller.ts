@@ -8,7 +8,7 @@ export class ProfissionaisController {
     return new ProfissionaisService(prisma);
   }
 
-  async listarCbos(req: Request, res: Response) {
+  async listarCbos(_req: Request, res: Response) {
     try {
       const service = this.getService();
       const cbos = await service.listarCbos();

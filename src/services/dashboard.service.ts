@@ -512,8 +512,8 @@ export class DashboardService {
               // Mapear para formato esperado pela função obrigatoriosSatisfeitos
               const procedimentosParaValidacao: ProcedimentoObrigatorio[] = procedimentosObrigatorios.map(proc => ({
                 id: proc.id,
-                codigo: proc.codigoSigtap || '',
-                nome: proc.nomeSigtap || ''
+                codigo: proc.codigo || '',
+                nome: proc.nome || ''
               }));
 
               const execucoesParaValidacao: ExecucaoParaValidacao[] = sol.execucoes.map(exec => ({
@@ -521,8 +521,8 @@ export class DashboardService {
                 status: exec.status,
                 procedimento: {
                   id: exec.procedimento.id,
-                  codigo: exec.procedimento.codigoSigtap || '',
-                  nome: exec.procedimento.nomeSigtap || ''
+                  codigo: exec.procedimento.codigo || '',
+                  nome: exec.procedimento.nome || ''
                 }
               }));
 
