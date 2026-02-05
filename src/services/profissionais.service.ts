@@ -31,6 +31,19 @@ export class ProfissionaisService {
       const [profissionais, total] = await Promise.all([
         this.prisma.profissional.findMany({
           where,
+          include: {
+            unidades: {
+              include: {
+                unidade: {
+                  select: {
+                    id: true,
+                    nome: true,
+                    cnes: true
+                  }
+                }
+              }
+            }
+          },
           orderBy: { nome: 'asc' },
           skip,
           take: limit
@@ -55,7 +68,20 @@ export class ProfissionaisService {
 
   async buscarProfissionalPorId(id: string) {
     return await this.prisma.profissional.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        unidades: {
+          include: {
+            unidade: {
+              select: {
+                id: true,
+                nome: true,
+                cnes: true
+              }
+            }
+          }
+        }
+      }
     });
   }
 
@@ -63,6 +89,7 @@ export class ProfissionaisService {
     nome: string;
     cns: string;
     cbo: string;
+    unidadesIds?: string[];
   }) {
     // Validar CNS (15 dígitos)
     const cnsLimpo = data.cns.replace(/\D/g, '');
@@ -79,13 +106,34 @@ export class ProfissionaisService {
       throw new Error('Já existe um profissional cadastrado com este CNS.');
     }
 
-    return await this.prisma.profissional.create({
+    // Criar profissional com unidades
+    const profissional = await this.prisma.profissional.create({
       data: {
         nome: data.nome.trim(),
         cns: cnsLimpo,
-        cbo: data.cbo.trim()
+        cbo: data.cbo.trim(),
+        unidades: data.unidadesIds && data.unidadesIds.length > 0 ? {
+          create: data.unidadesIds.map(unidadeId => ({
+            unidadeId
+          }))
+        } : undefined
+      },
+      include: {
+        unidades: {
+          include: {
+            unidade: {
+              select: {
+                id: true,
+                nome: true,
+                cnes: true
+              }
+            }
+          }
+        }
       }
     });
+
+    return profissional;
   }
 
   async atualizarProfissional(id: string, data: {
@@ -93,6 +141,7 @@ export class ProfissionaisService {
     cns?: string;
     cbo?: string;
     ativo?: boolean;
+    unidadesIds?: string[];
   }) {
     const profissional = await this.prisma.profissional.findUnique({
       where: { id }
@@ -134,9 +183,39 @@ export class ProfissionaisService {
       updateData.ativo = data.ativo;
     }
 
+    // Atualizar unidades se fornecido
+    if (data.unidadesIds !== undefined) {
+      // Remover todas as relações existentes
+      await this.prisma.profissionalUnidade.deleteMany({
+        where: { profissionalId: id }
+      });
+
+      // Criar novas relações
+      if (data.unidadesIds.length > 0) {
+        updateData.unidades = {
+          create: data.unidadesIds.map(unidadeId => ({
+            unidadeId
+          }))
+        };
+      }
+    }
+
     return await this.prisma.profissional.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      include: {
+        unidades: {
+          include: {
+            unidade: {
+              select: {
+                id: true,
+                nome: true,
+                cnes: true
+              }
+            }
+          }
+        }
+      }
     });
   }
 

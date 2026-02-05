@@ -11,11 +11,26 @@ interface Profissional {
   ativo: boolean
   createdAt: string
   updatedAt: string
+  unidades?: {
+    unidade: {
+      id: string
+      nome: string
+      cnes: string
+    }
+  }[]
+}
+
+interface UnidadeSaude {
+  id: string
+  nome: string
+  cnes: string
+  ativo: boolean
 }
 
 export default function Profissionais() {
   const { usuario } = useAuth()
   const [profissionais, setProfissionais] = useState<Profissional[]>([])
+  const [unidades, setUnidades] = useState<UnidadeSaude[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filtroAtivo, setFiltroAtivo] = useState<boolean | null>(true) // null = todos, true = apenas ativos, false = apenas inativos
@@ -24,15 +39,29 @@ export default function Profissionais() {
   const [form, setForm] = useState({
     nome: '',
     cns: '',
-    cbo: ''
+    cbo: '',
+    unidadesIds: [] as string[]
   })
   const [submitting, setSubmitting] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [erroApi, setErroApi] = useState<string | null>(null)
 
   useEffect(() => {
+    carregarUnidades()
+  }, [])
+
+  useEffect(() => {
     carregarProfissionais()
   }, [search, filtroAtivo])
+
+  const carregarUnidades = async () => {
+    try {
+      const response = await api.get('/unidades?ativo=true')
+      setUnidades(response.data.unidades || [])
+    } catch (error) {
+      console.error('Erro ao carregar unidades:', error)
+    }
+  }
 
   const carregarProfissionais = async () => {
     setErroApi(null)
@@ -58,7 +87,7 @@ export default function Profissionais() {
 
   const abrirModalNovo = () => {
     setEditando(null)
-    setForm({ nome: '', cns: '', cbo: '' })
+    setForm({ nome: '', cns: '', cbo: '', unidadesIds: [] })
     setErro(null)
     setModalAberto(true)
   }
@@ -68,7 +97,8 @@ export default function Profissionais() {
     setForm({
       nome: profissional.nome,
       cns: profissional.cns,
-      cbo: profissional.cbo
+      cbo: profissional.cbo,
+      unidadesIds: profissional.unidades?.map(u => u.unidade.id) || []
     })
     setErro(null)
     setModalAberto(true)
@@ -77,7 +107,7 @@ export default function Profissionais() {
   const fecharModal = () => {
     setModalAberto(false)
     setEditando(null)
-    setForm({ nome: '', cns: '', cbo: '' })
+    setForm({ nome: '', cns: '', cbo: '', unidadesIds: [] })
     setErro(null)
   }
 
@@ -129,13 +159,15 @@ export default function Profissionais() {
         await api.patch(`/profissionais/${editando.id}`, {
           nome: form.nome.trim(),
           cns: cnsLimpo,
-          cbo: form.cbo.trim()
+          cbo: form.cbo.trim(),
+          unidadesIds: form.unidadesIds
         })
       } else {
         await api.post('/profissionais', {
           nome: form.nome.trim(),
           cns: cnsLimpo,
-          cbo: form.cbo.trim()
+          cbo: form.cbo.trim(),
+          unidadesIds: form.unidadesIds
         })
       }
 
@@ -243,6 +275,7 @@ export default function Profissionais() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CNS</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CBO</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unidades</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
               </tr>
@@ -250,7 +283,7 @@ export default function Profissionais() {
             <tbody className="bg-white divide-y divide-gray-200">
               {profissionais.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     Nenhum profissional encontrado
                   </td>
                 </tr>
@@ -265,6 +298,19 @@ export default function Profissionais() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {profissional.cbo}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {profissional.unidades && profissional.unidades.length > 0 ? (
+                        <div className="max-w-xs">
+                          {profissional.unidades.map((u, idx) => (
+                            <div key={idx} className="text-xs truncate" title={u.unidade.nome}>
+                              {u.unidade.nome}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Nenhuma unidade</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs rounded-full ${
@@ -387,6 +433,43 @@ export default function Profissionais() {
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">Formato: XXXX-XX</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Unidades de Saúde
+                </label>
+                <div className="border border-gray-300 rounded-lg max-h-48 overflow-y-auto p-2 space-y-2">
+                  {unidades.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">Nenhuma unidade disponível</p>
+                  ) : (
+                    unidades.map((unidade) => (
+                      <label
+                        key={unidade.id}
+                        className="flex items-start gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.unidadesIds.includes(unidade.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setForm({ ...form, unidadesIds: [...form.unidadesIds, unidade.id] })
+                            } else {
+                              setForm({ ...form, unidadesIds: form.unidadesIds.filter(id => id !== unidade.id) })
+                            }
+                          }}
+                          disabled={submitting}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{unidade.nome}</div>
+                          <div className="text-xs text-gray-500">CNES: {unidade.cnes}</div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Selecione as unidades onde o profissional atua</p>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-gray-200">

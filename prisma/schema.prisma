@@ -107,6 +107,7 @@ model UnidadeSaude {
   solicitacoesOrigem   SolicitacaoOci[] @relation("UnidadeOrigem")
   solicitacoesDestino  SolicitacaoOci[] @relation("UnidadeDestino")
   execucoesExecutadas  ExecucaoProcedimento[] @relation("UnidadeExecutora")
+  profissionais        ProfissionalUnidade[] @relation("ProfissionalUnidades")
 
   @@index([nome])
   @@index([executante])
@@ -123,9 +124,26 @@ model Profissional {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  unidades ProfissionalUnidade[]
+
   @@index([nome])
   @@index([cns])
   @@map("profissionais")
+}
+
+model ProfissionalUnidade {
+  id             String   @id @default(uuid())
+  profissionalId String
+  unidadeId      String
+  createdAt      DateTime @default(now())
+
+  profissional Profissional @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
+  unidade      UnidadeSaude @relation("ProfissionalUnidades", fields: [unidadeId], references: [id], onDelete: Cascade)
+
+  @@unique([profissionalId, unidadeId])
+  @@index([profissionalId])
+  @@index([unidadeId])
+  @@map("profissionais_unidades")
 }
 
 model Oci {
