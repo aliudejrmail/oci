@@ -954,7 +954,9 @@ export class SolicitacoesService {
       // Só marcar como DISPENSADO se o procedimento for obrigatório (não marcar consultas de retorno não obrigatórias)
       const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) => {
         const obrigatorio = (e.procedimento as any).obrigatorio !== false;
-        return isConsultaMedicaEspecializada(e.procedimento.nome) && obrigatorio;
+        // NÃO dispensar o procedimento de retorno
+        const ehRetorno = e.procedimento.codigo === 'OCI-RETORNO-01' || e.procedimento.nome.includes('RETORNO');
+        return isConsultaMedicaEspecializada(e.procedimento.nome) && obrigatorio && !ehRetorno;
       });
       if (outrasConsultaTeleconsulta.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
