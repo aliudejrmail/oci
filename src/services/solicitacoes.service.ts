@@ -151,13 +151,14 @@ export class SolicitacoesService {
       const execucaoIds = new Set((solicitacao.execucoes || []).map(e => e.procedimento.id));
       const novosProcedimentos = solicitacao.oci.procedimentos.filter(p => !execucaoIds.has(p.id));
       if (novosProcedimentos.length > 0) {
-        if (!solicitacao.id) {
+        const solicitacaoId = solicitacao.id;
+        if (!solicitacaoId) {
           throw new Error('Solicitação não encontrada ao criar execuções.');
         }
         await Promise.all(novosProcedimentos.map(p =>
           this.prisma.execucaoProcedimento.create({
             data: {
-              solicitacaoId: solicitacao.id,
+              solicitacaoId,
               procedimentoId: p.id,
               status: STATUS_EXECUCAO.PENDENTE
             }
