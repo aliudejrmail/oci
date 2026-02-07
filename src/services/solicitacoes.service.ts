@@ -192,7 +192,7 @@ export class SolicitacoesService {
     // Garantir para o TypeScript que solicitacao não é null após possíveis recarregamentos
     if (!solicitacao) {
       throw new Error('Solicitação não encontrada após todas as tentativas de sincronização.');
-      }
+    }
     }
 
     // Enriquecer execuções: quando unidadeExecutora contém UUID (ID no campo errado), resolver o nome
