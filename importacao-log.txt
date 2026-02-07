@@ -1,0 +1,27 @@
+=== Importa├º├úo SIGTAP a partir de ZIP ===
+
+ZIP: C:\projetos_web\oci\tabelas\tabelas_sigtap.zip
+Tamanho do arquivo: 0.80 MB
+Extraindo em: C:\projetos_web\oci\tabelas\Extraido_20260207T150814
+ZIP cont├®m 5 arquivos/pastas
+Extra├º├úo conclu├¡da.
+
+Pasta das tabelas: C:\projetos_web\oci\tabelas\Extraido_20260207T150814 
+
+--- 1) Importando procedimentos (tb_procedimento ÔåÆ procedimentos_sigtap) ---
+Lendo tb_procedimento em C:\projetos_web\oci\tabelas\Extraido_20260207T150814
+  Linhas v├ílidas: 4962
+Resultado:
+  Procedimentos SIGTAP no banco: 4962
+Conclu├¡do.
+
+--- 2) Importando compatibilidade CID/CBO (OCI) ---
+Carregando arquivos SIGTAP em C:\projetos_web\oci\tabelas\Extraido_20260207T150814
+  Procedimentos OCI em procedimentos_sigtap: 34
+
+Resultado:
+  CompatibilidadeCidSigtap inseridas: 933
+  CompatibilidadeCboSigtap inseridas: 1502
+Conclu├¡do.
+
+=== Importa├º├úo SIGTAP conclu├¡da com sucesso. ===
