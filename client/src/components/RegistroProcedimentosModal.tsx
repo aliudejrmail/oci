@@ -197,7 +197,14 @@ export default function RegistroProcedimentosModal({
         : ''
       const ehAgendado = exec.status === 'AGENDADO'
       const unidadeExecutoraId = (exec as any).unidadeExecutoraId || ''
-      const unidadeExecutoraNome = (exec as any).unidadeExecutora || ''
+      // Resolve o nome da unidade pelo ID, se necessário
+      let unidadeExecutoraNome = (exec as any).unidadeExecutora || '';
+      if (unidadeExecutoraId && !unidadeExecutoraNome && Array.isArray(profissionais)) {
+        const unidade = profissionais
+          .flatMap(p => p.unidades || [])
+          .find(u => u.unidade?.id === unidadeExecutoraId);
+        unidadeExecutoraNome = unidade && unidade.unidade ? (unidade.unidade.nome || unidade.unidade.id) : '';
+      }
       return {
         execucaoId: exec.id,
         procedimentoId: exec.procedimento.id,
