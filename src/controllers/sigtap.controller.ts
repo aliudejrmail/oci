@@ -17,9 +17,9 @@ export class SigtapController {
 
     // Verificar tamanho do arquivo
     const tamanhoMB = file.size / (1024 * 1024);
-    if (tamanhoMB < 1) {
+    if (tamanhoMB < 0.5) {
       return res.status(400).json({
-        message: `Arquivo muito pequeno (${tamanhoMB.toFixed(2)} MB). Tabelas SIGTAP válidas têm 20-50 MB. Verifique se o arquivo não está corrompido.`
+        message: `Arquivo muito pequeno (${tamanhoMB.toFixed(2)} MB). Tabelas SIGTAP válidas têm entre 0.5-50 MB. Verifique se o arquivo não está corrompido.`
       });
     }
 
