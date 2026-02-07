@@ -1,18 +1,11 @@
 /**
- * Extrai um arquivo ZIP da tabela SIGTAP (por competência) e executa as importações:
- * 1) Procedimentos (tb_procedimento → procedimentos_sigtap)
- * 2) Compatibilidade CID/CBO (rl_* → compatibilidade_cid_sigtap, compatibilidade_cbo_sigtap)
- *
- * Uso:
- *   npm run importar:sigtap-zip
- *   npx ts-node scripts/importar-sigtap-zip.ts "tabelas/TabelaUnificada_202601_v2601221740.zip"
- *
- * O ZIP deve ser o arquivo baixado do SIGTAP (por competência). Após extração, a pasta
- * deve conter tb_procedimento.txt, rl_procedimento_cid.txt, rl_procedimento_ocupacao.txt, etc.
+ * Versão alternativa do importador SIGTAP para produção
+ * Com melhor tratamento de erros e validações específicas para Render/Neon
  */
 import * as fs from 'fs'
 import * as path from 'path'
 import { spawnSync } from 'child_process'
+import { PrismaClient } from '@prisma/client'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const AdmZip = require('adm-zip')
@@ -38,7 +31,20 @@ function encontrarPastaComTabelas(dir: string): string {
   return ''
 }
 
-function main(): void {
+async function testarConexaoBanco(): Promise<boolean> {
+  const prisma = new PrismaClient()
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    await prisma.$disconnect()
+    return true
+  } catch (err) {
+    console.error('❌ Erro de conexão com banco:', (err as Error).message)
+    await prisma.$disconnect()
+    return false
+  }
+}
+
+async function main(): Promise<void> {
   const cwd = process.cwd()
   const zipArg = process.argv[2]
   const zipPath = zipArg
@@ -48,18 +54,12 @@ function main(): void {
     : path.join(cwd, TABELAS_DIR, 'TabelaUnificada_202601_v2601221740.zip')
 
   if (!fs.existsSync(zipPath)) {
-    console.error('Arquivo ZIP não encontrado:', zipPath)
-    console.error('Uso: npx ts-node scripts/importar-sigtap-zip.ts [caminho/para/arquivo.zip]')
+    console.error('❌ Arquivo ZIP não encontrado:', zipPath)
+    console.error('Uso: npx ts-node scripts/importar-sigtap-zip-producao.ts [caminho/para/arquivo.zip]')
     process.exit(1)
   }
 
-  const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)
-  const extractDir = path.join(cwd, TABELAS_DIR, `Extraido_${timestamp}`)
-  if (!fs.existsSync(path.join(cwd, TABELAS_DIR))) {
-    fs.mkdirSync(path.join(cwd, TABELAS_DIR), { recursive: true })
-  }
-
-  console.log('=== Importação SIGTAP a partir de ZIP ===\n')
+  console.log('=== Importação SIGTAP (Produção) ===\n')
   console.log('ZIP:', zipPath)
   
   // Verificar tamanho do arquivo
@@ -70,11 +70,31 @@ function main(): void {
   if (tamanhoMB < 1) {
     console.error(`❌ ERRO: Arquivo muito pequeno (${tamanhoMB.toFixed(2)} MB).`)
     console.error('Tabelas SIGTAP válidas geralmente têm 20-50 MB.')
-    console.error('Verifique se o arquivo não está corrompido ou incompleto.')
+    process.exit(1)
+  }
+
+  // Testar conexão com banco ANTES de processar
+  console.log('🔍 Testando conexão com banco de dados...')
+  const bancoConectado = await testarConexaoBanco()
+  
+  if (!bancoConectado) {
+    console.error('❌ FALHA: Não foi possível conectar ao banco de dados.')
+    console.error('💡 Verifique se:')
+    console.error('   - O banco Neon está ativo (não hibernando)')
+    console.error('   - As credenciais DATABASE_URL estão corretas')
+    console.error('   - Há conectividade de rede')
     process.exit(1)
   }
   
-  console.log('Extraindo em:', extractDir)
+  console.log('✅ Conexão com banco confirmada.\n')
+  
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)
+  const extractDir = path.join(cwd, TABELAS_DIR, `Extraido_${timestamp}`)
+  if (!fs.existsSync(path.join(cwd, TABELAS_DIR))) {
+    fs.mkdirSync(path.join(cwd, TABELAS_DIR), { recursive: true })
+  }
+
+  console.log('📁 Extraindo em:', extractDir)
 
   try {
     const zip = new AdmZip(zipPath)
@@ -86,9 +106,9 @@ function main(): void {
       process.exit(1)
     }
     
-    console.log(`ZIP contém ${entries.length} arquivos/pastas`)
+    console.log(`📦 ZIP contém ${entries.length} arquivos/pastas`)
     zip.extractAllTo(extractDir, true)
-    console.log('Extração concluída.\n')
+    console.log('✅ Extração concluída.\n')
   } catch (err: unknown) {
     console.error('❌ Erro ao extrair ZIP:', (err as Error).message)
     console.error('O arquivo pode estar corrompido ou não ser um ZIP válido.')
@@ -113,37 +133,54 @@ function main(): void {
     }
     
     console.error('\n💡 Certifique-se de que o ZIP contém a tabela SIGTAP completa.')
-    console.error('   O arquivo deve conter tb_procedimento.txt e outras tabelas.')
     process.exit(1)
   }
-  console.log('Pasta das tabelas:', baseDir, '\n')
+  console.log('📂 Pasta das tabelas:', baseDir, '\n')
 
   const comando1 = `npx ts-node scripts/importar-procedimentos-sigtap.ts "${baseDir.replace(/"/g, '\\"')}"`
   const comando2 = `npx ts-node scripts/importar-compatibilidade-oci-sigtap.ts "${baseDir.replace(/"/g, '\\"')}"`
 
-  console.log('--- 1) Importando procedimentos (tb_procedimento → procedimentos_sigtap) ---')
+  console.log('--- 1️⃣ Importando procedimentos (tb_procedimento → procedimentos_sigtap) ---')
   const run1 = spawnSync(comando1, {
     cwd,
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    timeout: 20 * 60 * 1000  // 20 minutos de timeout
   })
+  
   if (run1.status !== 0) {
-    console.error('Falha na importação de procedimentos. Código:', run1.status)
+    console.error(`❌ Falha na importação de procedimentos. Código: ${run1.status}`)
+    
+    if (run1.signal === 'SIGTERM') {
+      console.error('⏱️  Processo foi interrompido por timeout (20 min)')
+      console.error('💡 Tente novamente ou verifique se há muitos dados para processar')
+    }
+    
     process.exit(run1.status ?? 1)
   }
 
-  console.log('\n--- 2) Importando compatibilidade CID/CBO (OCI) ---')
+  console.log('\n--- 2️⃣ Importando compatibilidade CID/CBO (OCI) ---')
   const run2 = spawnSync(comando2, {
     cwd,
     stdio: 'inherit',
-    shell: true
+    shell: true,
+    timeout: 20 * 60 * 1000  // 20 minutos de timeout
   })
+  
   if (run2.status !== 0) {
-    console.error('Falha na importação de compatibilidade. Código:', run2.status)
+    console.error(`❌ Falha na importação de compatibilidade. Código: ${run2.status}`)
+    
+    if (run2.signal === 'SIGTERM') {
+      console.error('⏱️  Processo foi interrompido por timeout (20 min)')
+    }
+    
     process.exit(run2.status ?? 1)
   }
 
-  console.log('\n=== Importação SIGTAP concluída com sucesso. ===')
+  console.log('\n🎉 === Importação SIGTAP concluída com sucesso! ===')
 }
 
-main()
+main().catch(err => {
+  console.error('❌ Erro fatal:', err.message)
+  process.exit(1)
+})
