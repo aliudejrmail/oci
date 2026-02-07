@@ -232,7 +232,7 @@ export default function RegistroProcedimentosModal({
     setProcedimentos(procedimentosInicializados)
     setErro(null)
     setSucesso(null)
-  }, [open, execucoes, execucoesCompletas, execucoesParaModal, execucoesParaStatus, carregandoExecucoes])
+  }, [open, execucoes, execucoesCompletas, execucoesParaModal, execucoesParaStatus, carregandoExecucoes, profissionais])
 
   /** Pelo menos uma consulta/teleconsulta médica especializada já está realizada. Usa lista completa + fallback nos procedimentos do form. */
   const consultaJaRealizada =
