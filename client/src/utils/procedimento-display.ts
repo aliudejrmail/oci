@@ -7,7 +7,7 @@
 export interface ExecucaoParaDisplay {
   id: string
   status: string
-  procedimento: { id: string; nome: string }
+  procedimento: { id: string; codigo: string; nome: string }
 }
 
 /** Indica se o procedimento é do tipo consulta ou teleconsulta (por nome). */
