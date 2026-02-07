@@ -648,7 +648,42 @@ export default function RegistroProcedimentosModal({
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (
                       <div className="mt-1.5 ml-8 space-y-1.5">
-                        {/* Unidade executante (vinda do agendamento) */}
+                        {/* Unidade executante (seleção obrigatória para consultas especializadas se não houver unidade definida) */}
+                        {proc.ehConsultaEspecializada && !proc.unidadeExecutoraId && (
+                          <div>
+                            <label htmlFor={`unidade-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                              Unidade executante <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              id={`unidade-${proc.execucaoId}`}
+                              value={proc.unidadeExecutoraId || ''}
+                              onChange={e => {
+                                const novos = [...procedimentos];
+                                novos[index].unidadeExecutoraId = e.target.value;
+                                // Limpa o médico executante ao trocar a unidade
+                                novos[index].medicoExecutante = '';
+                                setProcedimentos(novos);
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                              disabled={submitting}
+                            >
+                              <option value="">Selecione a unidade executante</option>
+                              {profissionais
+                                .flatMap(p => p.unidades?.map(u => u.unidade?.id).filter(Boolean) || [])
+                                .filter((v, i, arr) => v && arr.indexOf(v) === i)
+                                .map(unidadeId => {
+                                  const unidade = profissionais.find(p => p.unidades?.some(u => u.unidade?.id === unidadeId));
+                                  return unidade && unidade.unidades ? (
+                                    <option key={unidadeId} value={unidadeId}>
+                                      {unidade.unidades.find(u => u.unidade?.id === unidadeId)?.unidade?.id}
+                                    </option>
+                                  ) : null;
+                                })}
+                            </select>
+                          </div>
+                        )}
+                        {/* Unidade executante (vinda do agendamento ou já definida) */}
                         {proc.unidadeExecutoraNome && (
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-0.5">

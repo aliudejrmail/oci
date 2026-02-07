@@ -64,13 +64,17 @@ export function getStatusExibicao(
   }
 
   if (isConsultaMedicaEspecializada(execucao.procedimento.nome)) {
-    const outroNoGrupoExecutado = todasExecucoes.some(
-      (e) =>
-        e.id !== execucao.id &&
-        isConsultaMedicaEspecializada(e.procedimento.nome) &&
-        e.status === 'REALIZADO'
-    )
-    if (outroNoGrupoExecutado) return 'DISPENSADO'
+    // NÃO aplicar a lógica de DISPENSADO para o procedimento de retorno
+    const ehRetorno = execucao.procedimento.codigo === 'OCI-RETORNO-01' || execucao.procedimento.nome.includes('RETORNO');
+    if (!ehRetorno) {
+      const outroNoGrupoExecutado = todasExecucoes.some(
+        (e) =>
+          e.id !== execucao.id &&
+          isConsultaMedicaEspecializada(e.procedimento.nome) &&
+          e.status === 'REALIZADO'
+      )
+      if (outroNoGrupoExecutado) return 'DISPENSADO'
+    }
   }
 
   return execucao.status

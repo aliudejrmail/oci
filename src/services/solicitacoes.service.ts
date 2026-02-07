@@ -975,7 +975,11 @@ export class SolicitacoesService {
         include: { procedimento: true }
       });
       const idsReverter = dispensadas
-        .filter((e) => isConsultaMedicaEspecializada(e.procedimento.nome))
+        .filter((e) => {
+          // NÃO reverter o procedimento de retorno
+          const ehRetorno = e.procedimento.codigo === 'OCI-RETORNO-01' || e.procedimento.nome.includes('RETORNO');
+          return isConsultaMedicaEspecializada(e.procedimento.nome) && !ehRetorno;
+        })
         .map((e) => e.id);
       if (idsReverter.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
