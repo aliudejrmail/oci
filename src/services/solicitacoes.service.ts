@@ -935,9 +935,11 @@ export class SolicitacoesService {
         },
         include: { procedimento: true }
       });
-      const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) =>
-        isConsultaMedicaEspecializada(e.procedimento.nome)
-      );
+      // Só marcar como DISPENSADO se o procedimento for obrigatório (não marcar consultas de retorno não obrigatórias)
+      const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) => {
+        const obrigatorio = (e.procedimento as any).obrigatorio !== false;
+        return isConsultaMedicaEspecializada(e.procedimento.nome) && obrigatorio;
+      });
       if (outrasConsultaTeleconsulta.length > 0) {
         await this.prisma.execucaoProcedimento.updateMany({
           where: { id: { in: outrasConsultaTeleconsulta.map((e) => e.id) } },
