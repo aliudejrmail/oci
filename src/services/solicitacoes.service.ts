@@ -124,9 +124,7 @@ export class SolicitacoesService {
         paciente: true,
         oci: {
           include: {
-            procedimentos: {
-              orderBy: { ordem: 'asc' }
-            }
+            procedimentos: { orderBy: { ordem: 'asc' } }
           }
         },
         execucoes: {
@@ -134,39 +132,52 @@ export class SolicitacoesService {
             procedimento: true,
             unidadeExecutoraRef: { select: { cnes: true, nome: true } }
           },
-          orderBy: {
-            procedimento: {
-              ordem: 'asc'
-            }
-          }
+          orderBy: { procedimento: { ordem: 'asc' } }
         },
-        medicoSolicitante: {
-          select: {
-            id: true,
-            nome: true,
-            cns: true
-          }
-        },
-        criadoPor: {
-          select: {
-            id: true,
-            nome: true,
-            email: true
-          }
-        },
-        atualizadoPor: {
-          select: {
-            id: true,
-            nome: true,
-            email: true
-          }
-        },
+        medicoSolicitante: { select: { id: true, nome: true, cns: true } },
+        criadoPor: { select: { id: true, nome: true, email: true } },
+        atualizadoPor: { select: { id: true, nome: true, email: true } },
         alerta: true,
-        anexos: {
-          orderBy: { createdAt: 'desc' }
-        }
+        anexos: { orderBy: { createdAt: 'desc' } }
       }
     });
+
+    // Sincronizar execuções pendentes para procedimentos novos
+    if (solicitacao && solicitacao.oci && solicitacao.oci.procedimentos && solicitacao.oci.procedimentos.length) {
+      const execucaoIds = new Set((solicitacao.execucoes || []).map(e => e.procedimento.id));
+      const novosProcedimentos = solicitacao.oci.procedimentos.filter(p => !execucaoIds.has(p.id));
+      if (novosProcedimentos.length > 0) {
+        await Promise.all(novosProcedimentos.map(p =>
+          this.prisma.execucaoProcedimento.create({
+            data: {
+              solicitacaoId: solicitacao.id,
+              procedimentoId: p.id,
+              status: STATUS_EXECUCAO.PENDENTE
+            }
+          })
+        ));
+        // Recarregar execucoes
+        solicitacao = await this.prisma.solicitacaoOci.findFirst({
+          where: { id, deletedAt: null },
+          include: {
+            paciente: true,
+            oci: { include: { procedimentos: { orderBy: { ordem: 'asc' } } } },
+            execucoes: {
+              include: {
+                procedimento: true,
+                unidadeExecutoraRef: { select: { cnes: true, nome: true } }
+              },
+              orderBy: { procedimento: { ordem: 'asc' } }
+            },
+            medicoSolicitante: { select: { id: true, nome: true, cns: true } },
+            criadoPor: { select: { id: true, nome: true, email: true } },
+            atualizadoPor: { select: { id: true, nome: true, email: true } },
+            alerta: true,
+            anexos: { orderBy: { createdAt: 'desc' } }
+          }
+        });
+      }
+    }
 
     // Enriquecer execuções: quando unidadeExecutora contém UUID (ID no campo errado), resolver o nome
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
