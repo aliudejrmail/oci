@@ -193,7 +193,6 @@ export class SolicitacoesService {
     if (!solicitacao) {
       throw new Error('Solicitação não encontrada após todas as tentativas de sincronização.');
     }
-    }
 
     // Enriquecer execuções: quando unidadeExecutora contém UUID (ID no campo errado), resolver o nome
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
