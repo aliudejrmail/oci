@@ -35,6 +35,7 @@ interface ProfissionalOption {
   unidades?: {
     unidade?: {
       id: string
+      nome?: string
     } | null
   }[]
 }
