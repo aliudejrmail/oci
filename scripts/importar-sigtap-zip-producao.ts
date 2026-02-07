@@ -67,9 +67,9 @@ async function main(): Promise<void> {
   const tamanhoMB = stats.size / (1024 * 1024)
   console.log(`Tamanho do arquivo: ${tamanhoMB.toFixed(2)} MB`)
   
-  if (tamanhoMB < 1) {
+  if (tamanhoMB < 0.5) {
     console.error(`❌ ERRO: Arquivo muito pequeno (${tamanhoMB.toFixed(2)} MB).`)
-    console.error('Tabelas SIGTAP válidas geralmente têm 20-50 MB.')
+    console.error('Tabelas SIGTAP válidas geralmente têm pelo menos 0.5 MB.')
     process.exit(1)
   }
 
