@@ -142,8 +142,12 @@ export class SolicitacoesService {
       }
     });
 
+    if (!solicitacao) {
+      throw new Error('Solicitação não encontrada');
+    }
+
     // Sincronizar execuções pendentes para procedimentos novos
-    if (solicitacao && solicitacao.oci && solicitacao.oci.procedimentos && solicitacao.oci.procedimentos.length) {
+    if (solicitacao.oci && solicitacao.oci.procedimentos && solicitacao.oci.procedimentos.length) {
       const execucaoIds = new Set((solicitacao.execucoes || []).map(e => e.procedimento.id));
       const novosProcedimentos = solicitacao.oci.procedimentos.filter(p => !execucaoIds.has(p.id));
       if (novosProcedimentos.length > 0) {
@@ -176,6 +180,9 @@ export class SolicitacoesService {
             anexos: { orderBy: { createdAt: 'desc' } }
           }
         });
+        if (!solicitacao) {
+          throw new Error('Solicitação não encontrada após sincronizar execuções.');
+        }
       }
     }
 
