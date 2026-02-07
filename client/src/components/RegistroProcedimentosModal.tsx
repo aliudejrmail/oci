@@ -424,6 +424,9 @@ export default function RegistroProcedimentosModal({
         if (proc.ehConsultaEspecializada && proc.medicoExecutante?.trim()) {
           payload.profissional = proc.medicoExecutante.trim()
         }
+        if (proc.unidadeExecutoraId) {
+          payload.unidadeExecutoraId = proc.unidadeExecutoraId;
+        }
         if (proc.ehAnatomoPatologicoObrigatorio && proc.dataColetaMaterialBiopsia && proc.dataRegistroResultadoBiopsia) {
           const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
           const [ar, mr, dr] = proc.dataRegistroResultadoBiopsia.split('-').map(Number)
