@@ -25,7 +25,6 @@ router.get('/', async (req, res) => {
       where,
       include: {
         procedimentos: {
-          where: { codigoSigtap: { not: null } },
           orderBy: { ordem: 'asc' }
         },
         _count: {
@@ -48,7 +47,6 @@ router.get('/:id', async (req, res) => {
       where: { id: req.params.id },
       include: {
         procedimentos: {
-          where: { codigoSigtap: { not: null } },
           orderBy: { ordem: 'asc' }
         }
       }

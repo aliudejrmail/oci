@@ -48,10 +48,11 @@ export class SolicitacoesService {
       throw new Error('OCI não encontrada');
     }
 
-    const procedimentosSigtap = oci.procedimentos.filter((p) => p.codigoSigtap != null);
-    if (procedimentosSigtap.length === 0) {
+    // Corrigido: considerar todos os procedimentos da OCI, inclusive customizados
+    const procedimentosParaRegistrar = oci.procedimentos;
+    if (procedimentosParaRegistrar.length === 0) {
       throw new Error(
-        'Esta OCI não possui procedimentos da tabela SIGTAP. Utilize apenas OCIs importadas da tabela SIGTAP (npm run importar:ocis-sigtap).'
+        'Esta OCI não possui procedimentos cadastrados. Utilize apenas OCIs importadas ou configure os procedimentos manualmente.'
       );
     }
 
@@ -91,9 +92,9 @@ export class SolicitacoesService {
         }
       });
 
-      if (procedimentosSigtap.length > 0) {
+      if (procedimentosParaRegistrar.length > 0) {
         await tx.execucaoProcedimento.createMany({
-          data: procedimentosSigtap.map((proc) => ({
+          data: procedimentosParaRegistrar.map((proc) => ({
             solicitacaoId: sol.id,
             procedimentoId: proc.id,
             status: STATUS_EXECUCAO.PENDENTE
