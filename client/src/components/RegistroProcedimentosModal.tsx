@@ -659,7 +659,13 @@ export default function RegistroProcedimentosModal({
                               value={proc.unidadeExecutoraId || ''}
                               onChange={e => {
                                 const novos = [...procedimentos];
-                                novos[index].unidadeExecutoraId = e.target.value;
+                                const unidadeId = e.target.value;
+                                novos[index].unidadeExecutoraId = unidadeId;
+                                // Busca o nome da unidade selecionada
+                                const unidade = profissionais
+                                  .flatMap(p => p.unidades || [])
+                                  .find(u => u.unidade?.id === unidadeId);
+                                novos[index].unidadeExecutoraNome = unidade && unidade.unidade ? (unidade.unidade.nome || unidade.unidade.id) : '';
                                 // Limpa o médico executante ao trocar a unidade
                                 novos[index].medicoExecutante = '';
                                 setProcedimentos(novos);
@@ -673,10 +679,13 @@ export default function RegistroProcedimentosModal({
                                 .flatMap(p => p.unidades?.map(u => u.unidade?.id).filter(Boolean) || [])
                                 .filter((v, i, arr) => v && arr.indexOf(v) === i)
                                 .map(unidadeId => {
-                                  const unidade = profissionais.find(p => p.unidades?.some(u => u.unidade?.id === unidadeId));
-                                  return unidade && unidade.unidades ? (
+                                  // Busca o nome da unidade pelo id
+                                  const unidade = profissionais
+                                    .flatMap(p => p.unidades || [])
+                                    .find(u => u.unidade?.id === unidadeId);
+                                  return unidade && unidade.unidade ? (
                                     <option key={unidadeId} value={unidadeId}>
-                                      {unidade.unidades.find(u => u.unidade?.id === unidadeId)?.unidade?.id}
+                                      {unidade.unidade.nome || unidade.unidade.id}
                                     </option>
                                   ) : null;
                                 })}
