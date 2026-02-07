@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, requireRole } from '../middleware/auth.middleware';
 import { prisma } from '../database/prisma';
 
 const router = Router();
@@ -232,6 +232,55 @@ router.put('/:id', async (req, res) => {
     return res.json(paciente);
   } catch (error: any) {
     return res.status(400).json({ message: error.message });
+  }
+});
+
+// Excluir paciente
+router.delete('/:id', requireRole('ADMIN', 'GESTOR'), async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // Verificar se o paciente existe
+    const pacienteExistente = await prisma.paciente.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nome: true,
+        _count: {
+          select: {
+            solicitacoes: true
+          }
+        }
+      }
+    });
+
+    if (!pacienteExistente) {
+      return res.status(404).json({ message: 'Paciente não encontrado' });
+    }
+
+    // Verificar se possui solicitações associadas
+    if (pacienteExistente._count.solicitacoes > 0) {
+      return res.status(400).json({
+        message: `Não é possível excluir o paciente "${pacienteExistente.nome}". Existem ${pacienteExistente._count.solicitacoes} solicitação(ões) associada(s) a este paciente.`,
+        totalSolicitacoes: pacienteExistente._count.solicitacoes
+      });
+    }
+
+    // Excluir o paciente
+    await prisma.paciente.delete({
+      where: { id }
+    });
+
+    return res.json({
+      message: `Paciente "${pacienteExistente.nome}" excluído com sucesso`
+    });
+
+  } catch (error: any) {
+    console.error('Erro ao excluir paciente:', error);
+    return res.status(500).json({
+      message: 'Erro interno do servidor ao excluir paciente',
+      error: error.message
+    });
   }
 });
 
