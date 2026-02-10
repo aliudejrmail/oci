@@ -1,3 +1,41 @@
+import { useRef } from 'react'
+// Modal de confirmação com justificativa
+function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao }) {
+  const inputRef = useRef(null)
+  const [justificativa, setJustificativa] = useState('')
+  const [erro, setErro] = useState('')
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <div className="bg-white rounded shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        <p className="text-sm mb-3">{descricao}</p>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Justificativa <span className="text-red-500">*</span></label>
+        <textarea
+          ref={inputRef}
+          value={justificativa}
+          onChange={e => setJustificativa(e.target.value)}
+          className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          rows={3}
+          required
+        />
+        {erro && <p className="text-xs text-red-600 mt-1">{erro}</p>}
+        <div className="flex gap-2 mt-4 justify-end">
+          <button className="px-3 py-1 text-xs border rounded text-gray-700" onClick={onCancel}>Cancelar</button>
+          <button className="px-3 py-1 text-xs bg-blue-600 text-white rounded" onClick={() => {
+            if (!justificativa.trim()) {
+              setErro('Justificativa obrigatória.')
+              inputRef.current?.focus()
+              return
+            }
+            setErro('')
+            onConfirm(justificativa)
+          }}>Confirmar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
@@ -306,29 +344,26 @@ export default function RegistroProcedimentosModal({
     )
   }
 
-  const handleExcluirExecucao = async (execucaoId: string, index: number) => {
+  const [confirmJustificativa, setConfirmJustificativa] = useState<{execucaoId: string, index: number, tipo: string} | null>(null)
+  const [justificativaValor, setJustificativaValor] = useState('')
+  const handleExcluirExecucao = (execucaoId: string, index: number) => {
     if (!isAdmin) return
-    
-    if (!window.confirm('Tem certeza que deseja remover a data de realização deste procedimento? O procedimento voltará ao status pendente.')) {
-      return
-    }
-
-    setExcluindo(execucaoId)
+    setConfirmJustificativa({execucaoId, index, tipo: 'remover'})
+  }
+  const confirmarExclusao = async (justificativa: string) => {
+    if (!confirmJustificativa) return
+    setExcluindo(confirmJustificativa.execucaoId)
     setErro(null)
-    
     try {
-      // Reverter para PENDENTE - remove apenas a data de realização, mantém o procedimento
-      await api.patch(`/solicitacoes/execucoes/${execucaoId}`, {
+      await api.patch(`/solicitacoes/execucoes/${confirmJustificativa.execucaoId}`, {
         status: 'PENDENTE',
-        dataExecucao: null
+        dataExecucao: null,
+        justificativa
       })
-      
-      // Atualizar o estado local - marcar como não realizado
       const novos = [...procedimentos]
-      novos[index].realizado = false
-      novos[index].dataExecucao = ''
+      novos[confirmJustificativa.index].realizado = false
+      novos[confirmJustificativa.index].dataExecucao = ''
       setProcedimentos(novos)
-      
       setSucesso('Data de realização removida. Procedimento voltou ao status pendente.')
       setTimeout(() => {
         onSuccess?.()
@@ -339,6 +374,7 @@ export default function RegistroProcedimentosModal({
       setErro(error.response?.data?.message || 'Erro ao remover data de realização.')
     } finally {
       setExcluindo(null)
+      setConfirmJustificativa(null)
     }
   }
 
@@ -858,6 +894,14 @@ export default function RegistroProcedimentosModal({
                         )}
                       </button>
                     )}
+                        {/* Modal de confirmação com justificativa */}
+                        <ConfirmJustificativaModal
+                          open={!!confirmJustificativa}
+                          onCancel={() => setConfirmJustificativa(null)}
+                          onConfirm={confirmarExclusao}
+                          title={confirmJustificativa?.tipo === 'remover' ? 'Remover data de realização' : 'Confirmação'}
+                          descricao="Informe a justificativa para esta ação."
+                        />
                   </div>
                 </div>
               </div>

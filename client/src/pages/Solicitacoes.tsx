@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../services/api'
 import { Search, Plus, AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react'
@@ -46,8 +46,14 @@ export default function Solicitacoes() {
     search: '',
     unidadeExecutora: ''
   })
+  const [searchInput, setSearchInput] = useState('')
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const [unidadesExecutantes, setUnidadesExecutantes] = useState<Array<{ id: string; cnes: string; nome: string }>>([])
   const [erroApi, setErroApi] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(20)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
 
   const podeFiltrarPorUnidade = usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR'
 
@@ -61,7 +67,19 @@ export default function Solicitacoes() {
 
   useEffect(() => {
     carregarSolicitacoes()
-  }, [filtros])
+  }, [filtros, page, limit])
+
+  // Debounce para o campo de busca
+  useEffect(() => {
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
+    debounceTimeout.current = setTimeout(() => {
+      setFiltros(f => ({ ...f, search: searchInput }))
+      setPage(1)
+    }, 500)
+    return () => {
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current)
+    }
+  }, [searchInput])
 
   const carregarSolicitacoes = async () => {
     setErroApi(null)
@@ -72,20 +90,21 @@ export default function Solicitacoes() {
       if (filtros.tipo) params.append('tipo', filtros.tipo)
       if (filtros.search) params.append('search', filtros.search)
       if (filtros.unidadeExecutora) params.append('unidadeExecutora', filtros.unidadeExecutora)
-      
       // Adicionar timestamp para evitar cache
       params.append('_t', Date.now().toString())
-
+      params.append('page', page.toString())
+      params.append('limit', limit.toString())
       const response = await api.get(`/solicitacoes?${params.toString()}`)
       const lista = response.data?.solicitacoes ?? (Array.isArray(response.data) ? response.data : [])
-      if (Array.isArray(lista)) {
-        setSolicitacoes(lista)
-      } else {
-        setSolicitacoes([])
-      }
+      setSolicitacoes(Array.isArray(lista) ? lista : [])
+      const paginacao = response.data.paginacao || {}
+      setTotal(typeof paginacao.total === 'number' ? paginacao.total : (Array.isArray(lista) ? lista.length : 0))
+      setTotalPages(typeof paginacao.totalPages === 'number' ? paginacao.totalPages : 1)
     } catch (error: any) {
       console.error('❌ Erro ao carregar solicitações:', error)
       setSolicitacoes([])
+      setTotal(0)
+      setTotalPages(1)
       const msg = error?.response?.data?.message || error?.message || 'Servidor indisponível.'
       setErroApi(`Não foi possível carregar as solicitações. ${msg} Verifique se o backend está rodando (npm run dev ou npm run dev:server).`)
     } finally {
@@ -146,6 +165,61 @@ export default function Solicitacoes() {
     )
   }
 
+  const inicio = total === 0 ? 0 : (page - 1) * limit + 1
+  const fim = total === 0 ? 0 : Math.min(page * limit, total)
+
+  // Componente de paginação (topo e base)
+  const Paginacao = () => (
+    <div className="mt-2 mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-600">
+      <div>
+        {total > 0 && (
+          <span>
+            Mostrando {inicio}-{fim} de {total} solicitações
+          </span>
+        )}
+        {total === 0 && <span>Nenhuma solicitação encontrada</span>}
+      </div>
+      <div className="flex items-center gap-4 justify-end">
+        <div className="flex items-center gap-2">
+          <span>Por página:</span>
+          <select
+            value={limit}
+            onChange={e => {
+              const novoLimit = parseInt(e.target.value, 10) || 10
+              setLimit(novoLimit)
+              setPage(1)
+            }}
+            className="border border-gray-300 rounded px-2 py-1 bg-white"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={30}>30</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPage(prev => Math.max(1, prev - 1))}
+          disabled={page === 1}
+          className={`px-3 py-1 rounded border text-sm ${page === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+        >
+          Anterior
+        </button>
+        <span>
+          Página {totalPages === 0 ? 0 : page} de {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => setPage(prev => (totalPages ? Math.min(totalPages, prev + 1) : prev + 1))}
+          disabled={totalPages !== 0 && page >= totalPages}
+          className={`px-3 py-1 rounded border text-sm ${totalPages !== 0 && page >= totalPages ? 'border-gray-200 text-gray-300 cursor-not-allowed' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -185,6 +259,8 @@ export default function Solicitacoes() {
 
       {/* Filtros */}
       <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+        {/* Paginação no topo */}
+        <Paginacao />
         <div className={`grid grid-cols-1 gap-4 ${podeFiltrarPorUnidade ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
           <div className="md:col-span-2">
             <div className="relative">
@@ -192,8 +268,8 @@ export default function Solicitacoes() {
               <input
                 type="text"
                 placeholder="Buscar por protocolo, paciente ou CPF..."
-                value={filtros.search}
-                onChange={(e) => setFiltros({ ...filtros, search: e.target.value })}
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
               />
             </div>
@@ -403,6 +479,8 @@ export default function Solicitacoes() {
           </table>
         </div>
       </div>
+      {/* Paginação na base */}
+      <Paginacao />
 
       <NovaSolicitacaoModal
         open={modalNovaAberta}
