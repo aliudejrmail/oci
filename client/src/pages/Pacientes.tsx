@@ -65,10 +65,6 @@ export default function Pacientes() {
         </div>
         <button
           onClick={() => setModalNovoPacienteAberto(true)}
-      const [page, setPage] = useState(1)
-      const [limit, setLimit] = useState(20)
-      const [total, setTotal] = useState(0)
-      const [totalPages, setTotalPages] = useState(1)
           className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
         >
           <Plus size={20} />
@@ -79,13 +75,8 @@ export default function Pacientes() {
       {erroApi && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg">
           {erroApi}
-          params.append('page', page.toString())
-          params.append('limit', limit.toString())
         </div>
       )}
-          const paginacao = response.data.paginacao || {}
-          setTotal(typeof paginacao.total === 'number' ? paginacao.total : (response.data.pacientes?.length || 0))
-          setTotalPages(typeof paginacao.totalPages === 'number' ? paginacao.totalPages : 1)
 
       <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         <div className="relative mb-6">
