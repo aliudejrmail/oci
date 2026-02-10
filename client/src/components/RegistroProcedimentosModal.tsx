@@ -1,7 +1,15 @@
 import { useRef } from 'react'
 // Modal de confirmação com justificativa
-function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao }) {
-  const inputRef = useRef(null)
+import { useRef, useState, RefObject } from 'react'
+type ConfirmJustificativaModalProps = {
+  open: boolean
+  onConfirm: (justificativa: string) => void
+  onCancel: () => void
+  title: string
+  descricao: string
+}
+function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao }: ConfirmJustificativaModalProps) {
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const [justificativa, setJustificativa] = useState('')
   const [erro, setErro] = useState('')
   if (!open) return null
@@ -345,7 +353,7 @@ export default function RegistroProcedimentosModal({
   }
 
   const [confirmJustificativa, setConfirmJustificativa] = useState<{execucaoId: string, index: number, tipo: string} | null>(null)
-  const [justificativaValor, setJustificativaValor] = useState('')
+  // Removido: const [justificativaValor, setJustificativaValor] = useState('')
   const handleExcluirExecucao = (execucaoId: string, index: number) => {
     if (!isAdmin) return
     setConfirmJustificativa({execucaoId, index, tipo: 'remover'})
