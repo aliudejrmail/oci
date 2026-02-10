@@ -1,6 +1,4 @@
-import { useRef } from 'react'
-// Modal de confirmação com justificativa
-import { useRef, useState, RefObject } from 'react'
+import { useRef, useState } from 'react'
 type ConfirmJustificativaModalProps = {
   open: boolean
   onConfirm: (justificativa: string) => void
