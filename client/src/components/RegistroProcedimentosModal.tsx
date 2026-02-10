@@ -659,8 +659,8 @@ export default function RegistroProcedimentosModal({
                     {/* Data de execução (visível apenas se marcado como realizado) */}
                     {proc.realizado && (
                       <div className="mt-1.5 ml-8 space-y-1.5">
-                        {/* Unidade executante (seleção obrigatória para consultas especializadas se não houver unidade definida) */}
-                        {proc.ehConsultaEspecializada && !proc.unidadeExecutoraId && (
+                        {/* Unidade executante (seleção obrigatória para qualquer procedimento realizado se não houver unidade definida) */}
+                        {!proc.unidadeExecutoraId && (
                           <div>
                             <label htmlFor={`unidade-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
                               Unidade executante <span className="text-red-500">*</span>
