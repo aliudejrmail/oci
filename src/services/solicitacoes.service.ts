@@ -834,26 +834,33 @@ export class SolicitacoesService {
     
     // Aplicar validação da consulta especializada apenas para status explícitos (não automáticos)
     if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
-      const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findFirst({
-        where: { id: execucaoAtual.solicitacaoId, deletedAt: null },
-        include: {
-          execucoes: {
-            include: { procedimento: true }
+      // Para procedimentos que NÃO são consulta, permitir registro apenas com unidade executante
+      // Se não houver executanteId, mas houver unidadeExecutoraId, permitir
+      if (!data.executanteId && data.unidadeExecutoraId) {
+        // ok, permitido
+      } else {
+        // Regra original: exige consulta realizada antes dos demais procedimentos
+        const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findFirst({
+          where: { id: execucaoAtual.solicitacaoId, deletedAt: null },
+          include: {
+            execucoes: {
+              include: { procedimento: true }
+            }
           }
-        }
-      });
-      if (solicitacaoComExecucoes) {
-        const consultaJaRealizada = solicitacaoComExecucoes.execucoes.some(
-          (e) =>
-            e.id !== id &&
-            isConsultaMedicaEspecializada(e.procedimento.nome) &&
-            e.status === STATUS_EXECUCAO.REALIZADO &&
-            e.dataExecucao != null
-        );
-        if (!consultaJaRealizada) {
-          throw new Error(
-            'O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.'
+        });
+        if (solicitacaoComExecucoes) {
+          const consultaJaRealizada = solicitacaoComExecucoes.execucoes.some(
+            (e) =>
+              e.id !== id &&
+              isConsultaMedicaEspecializada(e.procedimento.nome) &&
+              e.status === STATUS_EXECUCAO.REALIZADO &&
+              e.dataExecucao != null
           );
+          if (!consultaJaRealizada) {
+            throw new Error(
+              'O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.'
+            );
+          }
         }
       }
     }
