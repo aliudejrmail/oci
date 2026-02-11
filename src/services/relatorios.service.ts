@@ -186,13 +186,21 @@ export class RelatoriosService {
             status: true,
             paciente: { select: { nome: true } }
           }
-        }
+        },
+        unidadeExecutoraRef: { select: { nome: true } }
       }
     });
+
     const total = await this.prisma.execucaoProcedimento.count({
       where: whereExecucaoCompleto
     });
-    return { total, execucoes, limite };
+
+    const execucoesFormatadas = execucoes.map((e) => ({
+      ...e,
+      unidadeExecutante: e.unidadeExecutoraRef
+    }));
+
+    return { total, execucoes: execucoesFormatadas, limite };
   }
 
   /** Tempo médio de conclusão (dias entre dataSolicitacao e dataConclusao) apenas para CONCLUIDA */
