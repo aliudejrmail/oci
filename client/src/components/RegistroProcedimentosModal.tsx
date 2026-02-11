@@ -45,7 +45,7 @@ function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao
 import { useEffect } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { Search, Plus, Trash2, X, Calendar, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { Trash2, X, Calendar, CheckCircle } from 'lucide-react'
 import { SearchableSelect } from './SearchableSelect'
 import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
 
