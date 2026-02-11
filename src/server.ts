@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 
 // Importar rotas
 import solicitacoesRoutes from './routes/solicitacoes.routes';
