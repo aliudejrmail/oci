@@ -476,9 +476,6 @@ export default function RegistroProcedimentosModal({
         }
         if (proc.ehConsultaEspecializada && proc.medicoExecutante?.trim()) {
           payload.profissional = proc.medicoExecutante.trim()
-          if (proc.medicoExecutanteId) {
-            payload.executanteId = proc.medicoExecutanteId
-          }
         }
         if (proc.unidadeExecutoraId) {
           payload.unidadeExecutoraId = proc.unidadeExecutoraId;
