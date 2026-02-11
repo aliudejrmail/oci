@@ -468,7 +468,9 @@ export default function RegistroProcedimentosModal({
           ? proc.dataExecucao.split('T')[0]
           : proc.dataExecucao
         const [ano, mes, dia] = dataFormatada.split('-').map(Number)
-        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0)
+        // Usar UTC explicitamente para evitar problemas de fuso horário (GMT-3) que transformam 00:00 em dia anterior
+        // Definindo 12:00 UTC garante que no Brasil (GMT-3) seja 09:00 do mesmo dia
+        const dataLocal = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0))
 
         const payload: Record<string, unknown> = {
           status: 'REALIZADO',
@@ -483,8 +485,9 @@ export default function RegistroProcedimentosModal({
         if (proc.ehAnatomoPatologicoObrigatorio && proc.dataColetaMaterialBiopsia && proc.dataRegistroResultadoBiopsia) {
           const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
           const [ar, mr, dr] = proc.dataRegistroResultadoBiopsia.split('-').map(Number)
-          payload.dataColetaMaterialBiopsia = new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
-          payload.dataRegistroResultadoBiopsia = new Date(ar, mr - 1, dr, 12, 0, 0).toISOString()
+          // Também ajustar biópsia para UTC 12:00 por segurança
+          payload.dataColetaMaterialBiopsia = new Date(Date.UTC(ac, mc - 1, dc, 12, 0, 0)).toISOString()
+          payload.dataRegistroResultadoBiopsia = new Date(Date.UTC(ar, mr - 1, dr, 12, 0, 0)).toISOString()
         }
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
@@ -492,8 +495,9 @@ export default function RegistroProcedimentosModal({
       // Promises para procedimentos com apenas data de coleta (AGUARDANDO_RESULTADO)
       const promisesColeta = procedimentosComColeta.map(proc => {
         const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
+        // Usar UTC 12:00
         const payload: Record<string, unknown> = {
-          dataColetaMaterialBiopsia: new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
+          dataColetaMaterialBiopsia: new Date(Date.UTC(ac, mc - 1, dc, 12, 0, 0)).toISOString()
         }
         // Não definir status explicitamente - deixar o backend determinar (AGUARDANDO_RESULTADO)
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
