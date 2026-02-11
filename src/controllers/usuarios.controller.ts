@@ -165,7 +165,7 @@ export class UsuariosController {
 
       await prisma.usuario.update({
         where: { id },
-        data: { tentativasLogin: 0, bloqueadoEm: null } as any
+        data: { tentativasLogin: 0, bloqueadoEm: null }
       });
 
       return res.json({ message: 'Usuário desbloqueado com sucesso' });

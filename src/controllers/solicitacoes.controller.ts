@@ -93,7 +93,7 @@ export class SolicitacoesController {
       console.error('❌ Erro ao listar solicitações:', error?.message, error?.code);
       const msg = error?.message || 'Erro ao listar solicitações';
       const isPrisma = error?.code && String(error.code).startsWith('P');
-      return res.status(500).json({ 
+      return res.status(500).json({
         message: msg,
         ...(isPrisma && { code: error.code, hint: 'Verifique DATABASE_URL no .env e execute: npx prisma generate' })
       });
@@ -106,7 +106,7 @@ export class SolicitacoesController {
       const authReq = req as AuthRequest;
       const { id } = req.params;
       const solicitacao = await service.buscarSolicitacaoPorId(id);
-      
+
       if (!solicitacao) {
         return res.status(404).json({ message: 'Solicitação não encontrada' });
       }
@@ -170,7 +170,7 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const { observacoes, unidadeOrigem, unidadeDestino, unidadeOrigemId, unidadeDestinoId, ociId, medicoSolicitanteId } = req.body;
+      const { observacoes, unidadeOrigem, unidadeDestino, ociId } = req.body;
 
       if (!id || typeof id !== 'string') {
         return res.status(400).json({ message: 'ID da solicitação é obrigatório' });
@@ -184,8 +184,8 @@ export class SolicitacoesController {
 
       // Não permitir edição se estiver concluída ou cancelada
       if (solicitacaoExistente.status === 'CONCLUIDA' || solicitacaoExistente.status === 'CANCELADA') {
-        return res.status(400).json({ 
-          message: 'Não é possível editar uma solicitação concluída ou cancelada' 
+        return res.status(400).json({
+          message: 'Não é possível editar uma solicitação concluída ou cancelada'
         });
       }
 
@@ -211,10 +211,7 @@ export class SolicitacoesController {
         observacoes,
         unidadeOrigem: unidadeOrigemFinal,
         unidadeDestino,
-        unidadeOrigemId,
-        unidadeDestinoId,
-        ociId,
-        medicoSolicitanteId
+        ociId
       });
 
       return res.json(solicitacao);
@@ -289,9 +286,9 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const quantidade = await service.verificarPrazosVencidos();
-      return res.json({ 
+      return res.json({
         message: `${quantidade} solicitação(ões) marcada(s) como vencida(s)`,
-        quantidade 
+        quantidade
       });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
@@ -343,7 +340,7 @@ export class SolicitacoesController {
   async downloadAnexo(req: Request, res: Response) {
     try {
       const { id: solicitacaoId, anexoId } = req.params;
-      
+
       // Verificar se a solicitação existe
       const solicitacao = await prisma.solicitacaoOci.findFirst({
         where: { id: solicitacaoId, deletedAt: null }
@@ -362,7 +359,7 @@ export class SolicitacoesController {
 
       // Construir caminho completo do arquivo
       const caminhoCompleto = path.join(process.cwd(), 'uploads', anexo.caminhoArmazenado);
-      
+
       // Verificar se arquivo existe
       if (!fs.existsSync(caminhoCompleto)) {
         return res.status(404).json({ message: 'Arquivo não encontrado no servidor.' });
@@ -372,10 +369,10 @@ export class SolicitacoesController {
       res.setHeader('Content-Type', anexo.contentType);
       res.setHeader('Content-Disposition', `inline; filename="${anexo.nomeOriginal}"`);
       res.setHeader('Content-Length', anexo.tamanhoBytes);
-      
+
       const fileStream = fs.createReadStream(caminhoCompleto);
       fileStream.pipe(res);
-      
+
       // Não retornar nada após pipe, o Express gerencia a resposta
       return;
     } catch (error: any) {
@@ -429,24 +426,24 @@ export class SolicitacoesController {
 
       // Validações
       if (!numeroAutorizacaoApac || !nomeProfissionalAutorizador || !cnsProfissionalAutorizador || !dataAutorizacaoApac) {
-        return res.status(400).json({ 
-          message: 'Todos os campos são obrigatórios: número da autorização, nome do profissional, CNS e data da autorização.' 
+        return res.status(400).json({
+          message: 'Todos os campos são obrigatórios: número da autorização, nome do profissional, CNS e data da autorização.'
         });
       }
 
       // Validar formato do número de autorização APAC
       const validacaoApac = validarNumeroAutorizacaoApac(numeroAutorizacaoApac);
       if (!validacaoApac.valido) {
-        return res.status(400).json({ 
-          message: validacaoApac.erro || 'Número de autorização APAC inválido.' 
+        return res.status(400).json({
+          message: validacaoApac.erro || 'Número de autorização APAC inválido.'
         });
       }
 
       // Validar formato do CNS (15 dígitos)
       const cnsLimpo = cnsProfissionalAutorizador.replace(/\D/g, '');
       if (cnsLimpo.length !== 15) {
-        return res.status(400).json({ 
-          message: 'O CNS deve conter exatamente 15 dígitos.' 
+        return res.status(400).json({
+          message: 'O CNS deve conter exatamente 15 dígitos.'
         });
       }
 
@@ -459,8 +456,8 @@ export class SolicitacoesController {
         cnsProfissionalAutorizador: cnsLimpo,
         dataAutorizacaoApac: new Date(dataAutorizacaoApac),
         motivoSaida: motivoSaida || undefined,
-        dataDiagnosticoCitoHistopatologico: dataDiagnosticoCitoHistopatologico 
-          ? new Date(dataDiagnosticoCitoHistopatologico) 
+        dataDiagnosticoCitoHistopatologico: dataDiagnosticoCitoHistopatologico
+          ? new Date(dataDiagnosticoCitoHistopatologico)
           : undefined,
         cidPrincipal: cidPrincipal || undefined,
         cidSecundario: cidSecundario || undefined

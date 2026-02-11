@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum TipoOci {
@@ -50,9 +49,6 @@ model Usuario {
   ativo                Boolean  @default(true)
   unidadeId            String?  // Unidade de lotação/vinculação (qualquer perfil)
   unidadeExecutanteId  String?  // Unidade onde o executante atua (só para tipo EXECUTANTE)
-  tentativasLogin      Int      @default(0)
-  bloqueadoEm          DateTime?
-  ultimoAcesso         DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

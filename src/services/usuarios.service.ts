@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const TIPOS_PERMITIDOS = ['ADMIN', 'GESTOR', 'ATENDENTE', 'EXECUTANTE', 'AUTORIZADOR', 'SOLICITANTE'];
 
 export class UsuariosService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async listarUsuarios(filtros: {
     search?: string;
@@ -47,6 +47,9 @@ export class UsuariosService {
           unidade: { select: { id: true, cnes: true, nome: true } },
           unidadeExecutanteId: true,
           unidadeExecutante: { select: { id: true, cnes: true, nome: true } },
+          tentativasLogin: true,
+          bloqueadoEm: true,
+          ultimoAcesso: true,
           createdAt: true,
           updatedAt: true
         },
@@ -81,6 +84,9 @@ export class UsuariosService {
         unidade: { select: { id: true, cnes: true, nome: true } },
         unidadeExecutanteId: true,
         unidadeExecutante: { select: { id: true, cnes: true, nome: true } },
+        tentativasLogin: true,
+        bloqueadoEm: true,
+        ultimoAcesso: true,
         createdAt: true,
         updatedAt: true
       }
@@ -141,6 +147,9 @@ export class UsuariosService {
         unidade: { select: { id: true, cnes: true, nome: true } },
         unidadeExecutanteId: true,
         unidadeExecutante: { select: { id: true, cnes: true, nome: true } },
+        tentativasLogin: true,
+        bloqueadoEm: true,
+        ultimoAcesso: true,
         createdAt: true,
         updatedAt: true
       }
@@ -217,6 +226,9 @@ export class UsuariosService {
         unidade: { select: { id: true, cnes: true, nome: true } },
         unidadeExecutanteId: true,
         unidadeExecutante: { select: { id: true, cnes: true, nome: true } },
+        tentativasLogin: true,
+        bloqueadoEm: true,
+        ultimoAcesso: true,
         createdAt: true,
         updatedAt: true
       }

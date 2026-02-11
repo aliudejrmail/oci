@@ -5,7 +5,6 @@ import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
   obrigatoriosSatisfeitos,
-  isProcedimentoConsultaOuTeleconsulta,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
@@ -517,7 +516,7 @@ export class SolicitacoesService {
         if (!validacao.valido) {
           throw new Error(
             validacao.erro ??
-              'Não é possível marcar como concluída: registre a realização dos procedimentos obrigatórios da OCI.'
+            'Não é possível marcar como concluída: registre a realização dos procedimentos obrigatórios da OCI.'
           );
         }
       }
@@ -652,7 +651,7 @@ export class SolicitacoesService {
     // Normalizar datas para evitar problemas de timezone
     // Garantir que datas sejam interpretadas como início do dia no timezone local
     const dataAtualizacao: any = { ...data };
-    
+
     if (data.dataExecucao && typeof data.dataExecucao === 'string') {
       // Se vier como string ISO, extrair apenas a parte da data e criar Date local
       const dataStr = data.dataExecucao.split('T')[0]; // YYYY-MM-DD
@@ -665,7 +664,7 @@ export class SolicitacoesService {
       dataNormalizada.setHours(0, 0, 0, 0);
       dataAtualizacao.dataExecucao = dataNormalizada;
     }
-    
+
     // dataAgendamento: aceitar data+hora (agendamento) ou só data
     if (data.dataAgendamento && typeof data.dataAgendamento === 'string') {
       if (data.dataAgendamento.includes('T')) {
@@ -708,7 +707,7 @@ export class SolicitacoesService {
     if (data.status === 'EXECUTADO' && ehBiopsia && dataAtualizacao.resultadoBiopsia && !dataAtualizacao.dataRegistroResultadoBiopsia) {
       dataAtualizacao.dataRegistroResultadoBiopsia = new Date();
     }
-    
+
     // Atualizar a execução
     const execucao = await this.prisma.execucaoProcedimento.update({
       where: { id },
@@ -731,13 +730,13 @@ export class SolicitacoesService {
       (e) => e.status === 'EXECUTADO' && e.dataExecucao != null
     );
 
-    const atualizar: { 
-      dataInicioValidadeApac?: Date | null; 
-      dataEncerramentoApac?: Date | null; 
+    const atualizar: {
+      dataInicioValidadeApac?: Date | null;
+      dataEncerramentoApac?: Date | null;
       competenciaInicioApac?: string | null;
       competenciaFimApac?: string | null;
-      dataConclusao?: Date; 
-      status?: StatusSolicitacao 
+      dataConclusao?: Date;
+      status?: StatusSolicitacao
     } = {};
 
     if (execucoesComData.length > 0) {
@@ -875,7 +874,7 @@ export class SolicitacoesService {
         where: { id: execucao.solicitacaoId },
         data: atualizar
       });
-      
+
       // Atualizar alerta após mudança nas competências APAC
       await this.atualizarAlertaPrazo(execucao.solicitacaoId);
     }
