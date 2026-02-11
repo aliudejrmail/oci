@@ -42,7 +42,7 @@ function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao
     </div>
   )
 }
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { X, CheckCircle, Calendar, Trash2 } from 'lucide-react'
