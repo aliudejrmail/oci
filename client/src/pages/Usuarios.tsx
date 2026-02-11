@@ -257,9 +257,11 @@ export default function Usuarios() {
         </div>
         <button
           onClick={abrirModalNovo}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2"
+          className="bg-primary-600 text-white px-5 py-2.5 rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 flex items-center gap-2 font-semibold transform active:scale-95"
         >
-          <Plus size={20} />
+          <div className="bg-white/20 p-1 rounded-lg">
+            <Plus size={18} />
+          </div>
           Novo Usuário
         </button>
       </div>
@@ -270,16 +272,16 @@ export default function Usuarios() {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex gap-4 mb-6 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="text"
               placeholder="Buscar por nome ou e-mail..."
               value={search}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-primary-100 focus:border-primary-500 transition-all outline-none text-slate-700"
             />
           </div>
           <select
@@ -310,14 +312,13 @@ export default function Usuarios() {
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50/50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Perfil</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unidade</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Usuário</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Perfil</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Unidade</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -330,15 +331,22 @@ export default function Usuarios() {
               ) : (
                 usuarios.map((u: Usuario) => (
                   <tr key={u.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{u.nome}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-slate-800 leading-none mb-1">{u.nome}</span>
+                        <span className="text-xs text-slate-400 font-medium">{u.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-primary-50 text-primary-700 border border-primary-100">
                         {getTipoLabel(u.tipo)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {u.unidade ? `${u.unidade.cnes} - ${u.unidade.nome}` : '—'}
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className="text-sm text-slate-600 font-medium">
+                        {u.unidade ? u.unidade.nome : '—'}
+                      </span>
+                      {u.unidade && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{u.unidade.cnes}</p>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col gap-1">
@@ -353,42 +361,42 @@ export default function Usuarios() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex gap-2">
+                    <td className="px-6 py-5 whitespace-nowrap text-right">
+                      <div className="flex gap-1.5 justify-end">
                         <button
                           onClick={() => abrirModalEditar(u)}
                           disabled={!podeEditarUsuario(u)}
-                          className="text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={podeEditarUsuario(u) ? 'Editar' : 'Gestor não pode editar Administrador'}
+                          className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all disabled:opacity-30"
+                          title="Editar perfil"
                         >
                           <Edit size={18} />
                         </button>
                         <button
                           onClick={() => handleToggleAtivo(u)}
                           disabled={u.id === usuarioLogado?.id || !podeEditarUsuario(u)}
-                          className={u.ativo ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed'}
-                          title={podeEditarUsuario(u) ? (u.ativo ? 'Inativar' : 'Ativar') : 'Gestor não pode alterar Administrador'}
+                          className={`p-2 rounded-xl transition-all disabled:opacity-30 ${u.ativo ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                          title={u.ativo ? 'Suspensão temporária' : 'Reativar acesso'}
                         >
                           {u.ativo ? <PowerOff size={18} /> : <Power size={18} />}
-                        </button>
-                        <button
-                          onClick={() => handleExcluir(u.id)}
-                          disabled={u.id === usuarioLogado?.id || !podeEditarUsuario(u)}
-                          className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={podeEditarUsuario(u) ? 'Excluir' : 'Gestor não pode excluir Administrador'}
-                        >
-                          <Trash2 size={18} />
                         </button>
                         {u.bloqueadoEm && (
                           <button
                             onClick={() => handleDesbloquear(u)}
                             disabled={!podeEditarUsuario(u)}
-                            className="text-orange-600 hover:text-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={podeEditarUsuario(u) ? 'Desbloquear usuário' : 'Gestor não pode desbloquear Administrador'}
+                            className="p-2 text-amber-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all animate-bounce-subtle"
+                            title="Liberar acesso bloqueado"
                           >
                             <Unlock size={18} />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleExcluir(u.id)}
+                          disabled={u.id === usuarioLogado?.id || !podeEditarUsuario(u)}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-30"
+                          title="Remover permanentemente"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </td>
                   </tr>
