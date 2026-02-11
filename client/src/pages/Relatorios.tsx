@@ -69,7 +69,10 @@ export default function Relatorios() {
       if (dataInicio) params.append('dataInicio', dataInicio)
       if (dataFim) params.append('dataFim', dataFim)
       if (status) params.append('status', status)
-      if (unidadeId) params.append('unidadeId', unidadeId)
+      // Para relatórios de procedimentos executados, garantir envio correto do filtro de unidade executante
+      if (unidadeId) {
+        params.append('unidadeId', unidadeId)
+      }
       if (tipoOci) params.append('tipoOci', tipoOci)
       const res = await api.get(`/relatorios?${params.toString()}`)
       setResultado(res.data as Record<string, unknown>)
@@ -450,6 +453,7 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                 <th className="text-left px-3 py-2">Protocolo</th>
                 <th className="text-left px-3 py-2">Paciente</th>
                 <th className="text-left px-3 py-2">Procedimento</th>
+                <th className="text-left px-3 py-2">Unidade Executante</th>
                 <th className="text-left px-3 py-2">Data execução</th>
               </tr>
             </thead>
@@ -459,6 +463,7 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                   <td className="px-3 py-2 font-mono">{String((e.solicitacao as { numeroProtocolo?: string })?.numeroProtocolo ?? '')}</td>
                   <td className="px-3 py-2">{String((e.solicitacao as { paciente?: { nome?: string } })?.paciente?.nome ?? '')}</td>
                   <td className="px-3 py-2">{String((e.procedimento as { nome?: string })?.nome ?? '')}</td>
+                  <td className="px-3 py-2">{String((e.unidadeExecutante as { nome?: string })?.nome ?? '')}</td>
                   <td className="px-3 py-2">{e.dataExecucao ? formatarData(e.dataExecucao as string) : '-'}</td>
                 </tr>
               ))}
@@ -513,7 +518,10 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
           <tbody>
             {lista.map((row, i) => (
               <tr key={i} className="border-t border-gray-100">
-                <td className="px-3 py-2">{row.mes}</td>
+                <td className="px-3 py-2">{(() => {
+                  const [ano, mes] = row.mes.split('-');
+                  return mes && ano ? `${mes}/${ano}` : row.mes;
+                })()}</td>
                 <td className="px-3 py-2 text-right font-medium">{row.criadas ?? 0}</td>
                 <td className="px-3 py-2 text-right font-medium">{row.concluidas ?? 0}</td>
               </tr>
