@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../services/api'
-import { Search, Plus, Edit, Trash2, X, Save, Power, PowerOff, UserCog } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, X, Save, Power, PowerOff, UserCog, Unlock } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 interface UnidadeExecutanteOption {
@@ -19,6 +19,8 @@ interface Usuario {
   unidade?: UnidadeExecutanteOption
   unidadeExecutanteId?: string | null
   unidadeExecutante?: UnidadeExecutanteOption
+  bloqueadoEm?: string | null
+  tentativasLogin?: number
   createdAt: string
   updatedAt: string
 }
@@ -328,11 +330,17 @@ export default function Usuarios() {
                       {u.unidade ? `${u.unidade.cnes} - ${u.unidade.nome}` : '—'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        u.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {u.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-1 text-xs rounded-full inline-block w-fit ${u.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                          {u.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                        {u.bloqueadoEm && (
+                          <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800 inline-block w-fit">
+                            Bloqueado
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-2">
@@ -360,6 +368,16 @@ export default function Usuarios() {
                         >
                           <Trash2 size={18} />
                         </button>
+                        {u.bloqueadoEm && (
+                          <button
+                            onClick={() => handleDesbloquear(u)}
+                            disabled={!podeEditarUsuario(u)}
+                            className="text-orange-600 hover:text-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={podeEditarUsuario(u) ? 'Desbloquear usuário' : 'Gestor não pode desbloquear Administrador'}
+                          >
+                            <Unlock size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
