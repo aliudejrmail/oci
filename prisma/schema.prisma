@@ -47,6 +47,8 @@ model Usuario {
   senha                String
   tipo                 TipoUsuario
   ativo                Boolean  @default(true)
+  tentativasLogin      Int      @default(0)
+  bloqueadoEm          DateTime?
   unidadeId            String?  // Unidade de lotação/vinculação (qualquer perfil)
   unidadeExecutanteId  String?  // Unidade onde o executante atua (só para tipo EXECUTANTE)
   createdAt            DateTime @default(now())

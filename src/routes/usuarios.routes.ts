@@ -17,5 +17,6 @@ router.get('/:id', (req: Request, res: Response) => controller.buscarPorId(req a
 router.post('/', (req: Request, res: Response) => controller.criar(req as any, res));
 router.patch('/:id', (req: Request, res: Response) => controller.atualizar(req as any, res));
 router.delete('/:id', (req: Request, res: Response) => controller.excluir(req as any, res));
+router.patch('/:id/desbloquear', (req: Request, res: Response) => controller.desbloquear(req as any, res));
 
 export default router;

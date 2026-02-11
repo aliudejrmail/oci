@@ -5,6 +5,7 @@ import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import { prisma } from '../database/prisma';
 import { getJwtSecret } from '../utils/env';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -14,8 +15,9 @@ const TIPOS_PERMITIDOS = ['ADMIN', 'GESTOR', 'ATENDENTE', 'EXECUTANTE', 'AUTORIZ
 // Em desenvolvimento: limite alto para não bloquear testes. Em produção: 30 tentativas por 15 min por IP
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'production' ? 30 : 100,
-  message: { message: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
+  max: 5, // Limite de 5 tentativas FALHAS
+  skipSuccessfulRequests: true, // Login com sucesso não queima ficha
+  message: { message: 'Muitas tentativas de login incorretas. Aguarde 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -53,14 +55,60 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
       }
     });
 
-    if (!usuario || !usuario.ativo) {
+    if (!usuario) {
+      // Retornar erro genérico para não enumerar usuários
+      return res.status(401).json({ message: 'Credenciais inválidas' });
+    }
+
+    // Verificar se está bloqueado
+    if ((usuario as any).bloqueadoEm) {
+      return res.status(403).json({
+        message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+      });
+    }
+
+    if (!usuario.ativo) {
       return res.status(401).json({ message: 'Credenciais inválidas' });
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-      return res.status(401).json({ message: 'Credenciais inválidas' });
+      // Incrementar tentativas
+      const tentativas = (usuario.tentativasLogin || 0) + 1;
+      let updateData: any = { tentativasLogin: tentativas };
+
+      // Bloquear se atingir 5 tentativas
+      if (tentativas >= 5) {
+        updateData.bloqueadoEm = new Date();
+      }
+
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: updateData
+      });
+
+      if (tentativas >= 5) {
+        return res.status(403).json({
+          message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+        });
+      }
+
+      const tentativasRestantes = 5 - tentativas;
+      return res.status(401).json({
+        message: `Credenciais inválidas. Restam ${tentativasRestantes} tentativas antes do bloqueio.`
+      });
+    }
+
+    // Login com sucesso: Resetar contador e bloqueio (se houver resquício, embora bloqueado não passe aqui, garante limpeza)
+    if ((usuario.tentativasLogin || 0) > 0 || usuario.bloqueadoEm) {
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { tentativasLogin: 0, bloqueadoEm: null }
+      });
+      // Atualiza objeto local para retorno correto (opcional, mas boa prática)
+      usuario.tentativasLogin = 0;
+      usuario.bloqueadoEm = null;
     }
 
     const secret = getJwtSecret();
@@ -74,7 +122,16 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
       { expiresIn: '24h' }
     );
 
+    // Configurar cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // HTTPS em produção
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24h
+    });
+
     return res.json({
+      // Token ainda retornado no corpo por compatibilidade (opcional), mas o cookie é o principal
       token,
       usuario: {
         id: usuario.id,
@@ -103,6 +160,46 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
         code: error.code
       })
     });
+  }
+});
+
+// Logout (Limpar cookie)
+router.post('/logout', (_req: Request, res: Response) => {
+  res.clearCookie('token');
+  return res.json({ message: 'Logout realizado com sucesso' });
+});
+
+// Verificar sessão (Me)
+router.get('/me', authenticate, async (req: Request, res: Response) => {
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: (req as any).userId },
+      include: {
+        unidade: { select: { id: true, cnes: true, nome: true } },
+        unidadeExecutante: { select: { id: true, cnes: true, nome: true } }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(401).json({ message: 'Usuário não encontrado' });
+    }
+
+    return res.json({
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      tipo: usuario.tipo,
+      unidadeId: usuario.unidadeId ?? null,
+      unidade: usuario.unidade
+        ? { id: usuario.unidade.id, cnes: usuario.unidade.cnes, nome: usuario.unidade.nome }
+        : null,
+      unidadeExecutanteId: usuario.unidadeExecutanteId ?? null,
+      unidadeExecutante: usuario.unidadeExecutante
+        ? { id: usuario.unidadeExecutante.id, cnes: usuario.unidadeExecutante.cnes, nome: usuario.unidadeExecutante.nome }
+        : null
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Erro ao buscar perfil' });
   }
 });
 

@@ -10,7 +10,8 @@ export interface AuthRequest extends Request {
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
+    // Prioridade: Cookie > Header
+    const token = (req as any).cookies?.token || authHeader?.replace('Bearer ', '');
 
     if (!token) {
       return res.status(401).json({ message: 'Token não fornecido' });

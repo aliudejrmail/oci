@@ -14,9 +14,8 @@ interface Usuario {
 
 interface AuthContextType {
   usuario: Usuario | null
-  token: string | null
   login: (email: string, senha: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   loading: boolean
 }
 
@@ -24,43 +23,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const tokenStorage = localStorage.getItem('token')
-    const usuarioStorage = localStorage.getItem('usuario')
-
-    if (tokenStorage && usuarioStorage) {
-      setToken(tokenStorage)
-      setUsuario(JSON.parse(usuarioStorage))
-      api.defaults.headers.common['Authorization'] = `Bearer ${tokenStorage}`
+    async function checkAuth() {
+      try {
+        const response = await api.get('/auth/me')
+        setUsuario(response.data)
+      } catch (error) {
+        setUsuario(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setLoading(false)
+    checkAuth()
   }, [])
 
   const login = async (email: string, senha: string) => {
     const response = await api.post('/auth/login', { email, senha })
-    const { token: newToken, usuario: newUsuario } = response.data
-
-    setToken(newToken)
-    setUsuario(newUsuario)
-    localStorage.setItem('token', newToken)
-    localStorage.setItem('usuario', JSON.stringify(newUsuario))
-    api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+    // O cookie é setado automaticamente pelo backend
+    setUsuario(response.data.usuario) // Ajuste conforme resposta do login
   }
 
-  const logout = () => {
-    setToken(null)
-    setUsuario(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('usuario')
-    delete api.defaults.headers.common['Authorization']
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch (error) {
+      console.error('Erro ao fazer logout', error)
+    } finally {
+      setUsuario(null)
+      window.location.href = '/login'
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ usuario, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   )

@@ -46,6 +46,9 @@ app.set('trust proxy', true);
 // Headers de segurança (Helmet)
 app.use(helmet({ contentSecurityPolicy: false })); // CSP desabilitado para compatibilidade com SPA; ajustar se necessário
 
+// Middleware de cookies
+app.use(cookieParser());
+
 // Rate limit geral para API (proteção contra abuso)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
@@ -160,7 +163,7 @@ async function iniciarServidor() {
     // Testar conexão
     await prisma.$connect();
     console.log('✅ Conexão com banco de dados estabelecida');
-    
+
     // Verificar se existem usuários
     const userCount = await prisma.usuario.count();
     if (userCount === 0) {

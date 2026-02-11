@@ -151,4 +151,27 @@ export class UsuariosController {
       return res.status(500).json({ message: error.message || 'Erro ao excluir usuário' });
     }
   }
+
+  async desbloquear(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (req.userTipo === 'GESTOR') {
+        const existente = await service.buscarPorId(id);
+        if (existente.tipo === 'ADMIN') {
+          return res.status(403).json({ message: 'Gestor não tem permissão para desbloquear usuários com perfil Administrador.' });
+        }
+      }
+
+      await prisma.usuario.update({
+        where: { id },
+        data: { tentativasLogin: 0, bloqueadoEm: null } as any
+      });
+
+      return res.json({ message: 'Usuário desbloqueado com sucesso' });
+    } catch (error: any) {
+      console.error('Erro ao desbloquear usuário:', error);
+      return res.status(500).json({ message: error.message || 'Erro ao desbloquear usuário' });
+    }
+  }
 }

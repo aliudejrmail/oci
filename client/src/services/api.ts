@@ -8,15 +8,12 @@ export const api = axios.create({
   baseURL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Importante para enviar Cookies
 })
 
-// Interceptor para adicionar token e tratar FormData
+// Interceptor para tratar FormData (Content-Type)
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
   // Se for FormData, remove Content-Type para o axios definir multipart/form-data com boundary
   if (config.data instanceof FormData) {
     delete config.headers['Content-Type']
@@ -29,9 +26,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('usuario')
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
