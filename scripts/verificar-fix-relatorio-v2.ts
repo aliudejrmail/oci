@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const service = new RelatoriosService(prisma);
 
 async function main() {
-    console.log('--- DIAGNOSTICO ---');
+    console.log('--- DIAGNOSTICO CNES ---');
 
     const filtros: FiltrosRelatorio = {
         dataInicio: '2023-01-01',
@@ -19,26 +19,33 @@ async function main() {
 
         console.log(`Encontrados: ${execs.length}`);
 
-        // Filtrar um que tenha unidadeExecutoraId nao nulo
-        const comUnidade = execs.find(e => e.unidadeExecutoraId != null);
+        // Filtrar um que tenha unidadeExecutoraRef (e consequentemente unidadeExecutante)
+        const comUnidade = execs.find(e => e.unidadeExecutoraRef != null);
 
         if (comUnidade) {
-            console.log('Registro com unidadeExecutoraId encontrado:', comUnidade.id);
-            console.log('unidadeExecutoraId:', comUnidade.unidadeExecutoraId);
-            console.log('unidadeExecutoraRef:', comUnidade.unidadeExecutoraRef);
-            console.log('unidadeExecutante:', comUnidade.unidadeExecutante);
+            console.log('Registro com unidadeExecutora encontrado:', comUnidade.id);
+            const unidade = comUnidade.unidadeExecutante;
 
-            if (comUnidade.unidadeExecutante && comUnidade.unidadeExecutante.nome) {
-                console.log('✅ SUCESSO: Nome da unidade executante:', comUnidade.unidadeExecutante.nome);
+            if (unidade && unidade.nome) {
+                console.log('Nome da unidade executante:', unidade.nome);
+                // Verificar padrão CNES - NOME
+                // CNES é geralmente numérico de 7 digitos
+                const regex = /^\d+\s+-\s+.+/;
+                if (regex.test(unidade.nome)) {
+                    console.log('✅ SUCESSO: Nome está no formato "CNES - NOME".');
+                } else if (unidade.cnes) {
+                    console.log('⚠️ AVISO: Nome não parece estar formatado, mas CNES existe:', unidade.cnes);
+                    console.log('Formato atual:', unidade.nome);
+                } else {
+                    console.log('⚠️ AVISO: Unidade sem CNES no banco?');
+                    console.log('Objeto unidade:', unidade);
+                }
+
             } else {
                 console.log('❌ FALHA: Nome não encontrado em unidadeExecutante');
             }
         } else {
-            console.log('⚠️ AVISO: Nenhum registro com unidadeExecutoraId encontrado nas primeiras 10 execuções.');
-            // Tentar pegar qq um
-            if (execs.length > 0) {
-                console.log('Exemplo sem unidade:', execs[0]);
-            }
+            console.log('⚠️ AVISO: Nenhum registro com unidade executora vinculada encontrado.');
         }
 
     } catch (error) {

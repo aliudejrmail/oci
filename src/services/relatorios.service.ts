@@ -32,7 +32,7 @@ function buildWhere(filtros: FiltrosRelatorio) {
 }
 
 export class RelatoriosService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   /** Resumo geral: totais, por status e por tipo OCI */
   async resumo(filtros: FiltrosRelatorio) {
@@ -95,9 +95,9 @@ export class RelatoriosService {
     const ids = [...new Set(grupos.map((g) => g.unidadeOrigem))];
     const unidades = ids.length
       ? await this.prisma.unidadeSaude.findMany({
-          where: { id: { in: ids } },
-          select: { id: true, nome: true, cnes: true }
-        })
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, cnes: true }
+      })
       : [];
     const mapNome = Object.fromEntries(unidades.map((u) => [u.id, u.nome]));
     return grupos.map((g) => ({
@@ -118,9 +118,9 @@ export class RelatoriosService {
     const ids = grupos.map((g) => g.unidadeDestino).filter(Boolean) as string[];
     const unidades = ids.length
       ? await this.prisma.unidadeSaude.findMany({
-          where: { id: { in: ids } },
-          select: { id: true, nome: true, cnes: true }
-        })
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, cnes: true }
+      })
       : [];
     const mapNome = Object.fromEntries(unidades.map((u) => [u.id, u.nome]));
     return grupos.map((g) => ({
@@ -187,7 +187,7 @@ export class RelatoriosService {
             paciente: { select: { nome: true } }
           }
         },
-        unidadeExecutoraRef: { select: { nome: true } }
+        unidadeExecutoraRef: { select: { nome: true, cnes: true } }
       }
     });
 
@@ -195,10 +195,16 @@ export class RelatoriosService {
       where: whereExecucaoCompleto
     });
 
-    const execucoesFormatadas = execucoes.map((e) => ({
-      ...e,
-      unidadeExecutante: e.unidadeExecutoraRef
-    }));
+    const execucoesFormatadas = execucoes.map((e) => {
+      const unidade = e.unidadeExecutoraRef;
+      return {
+        ...e,
+        unidadeExecutante: unidade ? {
+          ...unidade,
+          nome: unidade.cnes ? `${unidade.cnes} - ${unidade.nome}` : unidade.nome
+        } : null
+      };
+    });
 
     return { total, execucoes: execucoesFormatadas, limite };
   }
@@ -233,11 +239,11 @@ export class RelatoriosService {
     const inicio = filtros.dataInicio
       ? new Date(filtros.dataInicio + 'T00:00:00')
       : (() => {
-          const d = new Date();
-          d.setMonth(d.getMonth() - meses);
-          d.setDate(1);
-          return d;
-        })();
+        const d = new Date();
+        d.setMonth(d.getMonth() - meses);
+        d.setDate(1);
+        return d;
+      })();
     const fim = filtros.dataFim
       ? new Date(filtros.dataFim + 'T23:59:59.999')
       : new Date();
