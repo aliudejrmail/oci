@@ -61,11 +61,11 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
     }
 
     // Verificar se está bloqueado
-    if ((usuario as any).bloqueadoEm) {
-      return res.status(403).json({
-        message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
-      });
-    }
+    // if ((usuario as any).bloqueadoEm) {
+    //   return res.status(403).json({
+    //     message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+    //   });
+    // }
 
     if (!usuario.ativo) {
       return res.status(401).json({ message: 'Credenciais inválidas' });
@@ -79,20 +79,20 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
       let updateData: any = { tentativasLogin: tentativas };
 
       // Bloquear se atingir 5 tentativas
-      if (tentativas >= 5) {
-        updateData.bloqueadoEm = new Date();
-      }
+      // if (tentativas >= 5) {
+      //   updateData.bloqueadoEm = new Date();
+      // }
 
       await prisma.usuario.update({
         where: { id: usuario.id },
         data: updateData
       });
 
-      if (tentativas >= 5) {
-        return res.status(403).json({
-          message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
-        });
-      }
+      // if (tentativas >= 5) {
+      //   return res.status(403).json({
+      //     message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+      //   });
+      // }
 
       const tentativasRestantes = 5 - tentativas;
       return res.status(401).json({
@@ -101,14 +101,13 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
     }
 
     // Login com sucesso: Resetar contador e bloqueio (se houver resquício, embora bloqueado não passe aqui, garante limpeza)
-    if ((usuario.tentativasLogin || 0) > 0 || usuario.bloqueadoEm) {
+    if ((usuario.tentativasLogin || 0) > 0) {
       await prisma.usuario.update({
         where: { id: usuario.id },
-        data: { tentativasLogin: 0, bloqueadoEm: null }
+        data: { tentativasLogin: 0 }
       });
       // Atualiza objeto local para retorno correto (opcional, mas boa prática)
       usuario.tentativasLogin = 0;
-      usuario.bloqueadoEm = null;
     }
 
     const secret = getJwtSecret();
