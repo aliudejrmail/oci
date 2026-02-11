@@ -45,7 +45,8 @@ function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao
 import { useEffect } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { X, CheckCircle, Calendar, Trash2 } from 'lucide-react'
+import { Search, Plus, Trash2, X, Calendar, ChevronDown, ChevronUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { SearchableSelect } from './SearchableSelect'
 import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
 
 interface ProcedimentoExecucao {
@@ -72,6 +73,7 @@ interface ProfissionalOption {
   id: string
   nome: string
   cns: string
+  cbo?: string
   cboRelacao?: {
     codigo: string
     descricao: string
@@ -189,6 +191,7 @@ export default function RegistroProcedimentosModal({
     dataColetaMaterialBiopsia: string
     dataRegistroResultadoBiopsia: string
     medicoExecutante: string
+    medicoExecutanteId?: string
   }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [excluindo, setExcluindo] = useState<string | null>(null)
@@ -276,7 +279,8 @@ export default function RegistroProcedimentosModal({
           resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
           dataColetaMaterialBiopsia: dataColeta,
           dataRegistroResultadoBiopsia: dataRegistro,
-          medicoExecutante: (exec as any).profissional || ''
+          medicoExecutante: (exec as any).profissional || '',
+          medicoExecutanteId: (exec as any).executanteId || profissionais.find(p => p.nome === ((exec as any).profissional))?.id || ''
         }
       })
 
@@ -472,6 +476,9 @@ export default function RegistroProcedimentosModal({
         }
         if (proc.ehConsultaEspecializada && proc.medicoExecutante?.trim()) {
           payload.profissional = proc.medicoExecutante.trim()
+          if (proc.medicoExecutanteId) {
+            payload.executanteId = proc.medicoExecutanteId
+          }
         }
         if (proc.unidadeExecutoraId) {
           payload.unidadeExecutoraId = proc.unidadeExecutoraId;
@@ -713,17 +720,32 @@ export default function RegistroProcedimentosModal({
                               <label htmlFor={`unidade-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
                                 Unidade executante <span className="text-red-500">*</span>
                               </label>
-                              <select
-                                id={`unidade-${proc.execucaoId}`}
-                                value={proc.unidadeExecutoraId || ''}
-                                onChange={e => {
-                                  const novos = [...procedimentos];
-                                  const unidadeId = e.target.value;
-                                  novos[index].unidadeExecutoraId = unidadeId;
-                                  // Busca o nome da unidade selecionada
+                              <SearchableSelect
+                                options={Array.from(new Set(profissionais.flatMap(p => p.unidades || []).map(u => u.unidade?.id).filter(Boolean))).map(unidadeId => {
                                   const unidade = profissionais
                                     .flatMap(p => p.unidades || [])
                                     .find(u => u.unidade?.id === unidadeId);
+
+                                  if (!unidade || !unidade.unidade) return null;
+
+                                  const label = unidade.unidade.cnes
+                                    ? `${unidade.unidade.cnes} - ${unidade.unidade.nome || unidade.unidade.id}`
+                                    : (unidade.unidade.nome || unidade.unidade.id);
+
+                                  return {
+                                    value: unidadeId as string,
+                                    label: label
+                                  };
+                                }).filter((u): u is { label: string, value: string } => u !== null)}
+                                value={proc.unidadeExecutoraId}
+                                onChange={(val) => {
+                                  const novos = [...procedimentos];
+                                  novos[index].unidadeExecutoraId = val;
+
+                                  const unidade = profissionais
+                                    .flatMap(p => p.unidades || [])
+                                    .find(u => u.unidade?.id === val);
+
                                   if (unidade && unidade.unidade) {
                                     const nome = unidade.unidade.nome || unidade.unidade.id;
                                     const cnes = unidade.unidade.cnes;
@@ -733,28 +755,13 @@ export default function RegistroProcedimentosModal({
                                   }
                                   // Limpa o médico executante ao trocar a unidade
                                   novos[index].medicoExecutante = '';
+                                  novos[index].medicoExecutanteId = ''; // Garantir limpeza do ID também se houver campo
                                   setProcedimentos(novos);
                                 }}
-                                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                required
+                                placeholder="Selecione a unidade..."
+                                emptyMessage="Nenhuma unidade encontrada"
                                 disabled={submitting}
-                              >
-                                <option value="">Selecione a unidade executante</option>
-                                {profissionais
-                                  .flatMap(p => p.unidades?.map(u => u.unidade?.id).filter(Boolean) || [])
-                                  .filter((v, i, arr) => v && arr.indexOf(v) === i)
-                                  .map(unidadeId => {
-                                    // Busca o nome da unidade pelo id
-                                    const unidade = profissionais
-                                      .flatMap(p => p.unidades || [])
-                                      .find(u => u.unidade?.id === unidadeId);
-                                    return unidade && unidade.unidade ? (
-                                      <option key={unidadeId} value={unidadeId}>
-                                        {unidade.unidade.cnes ? `${unidade.unidade.cnes} - ` : ''}{unidade.unidade.nome || unidade.unidade.id}
-                                      </option>
-                                    ) : null;
-                                  })}
-                              </select>
+                              />
                             </div>
                           )}
                           {/* Unidade executante (vinda do agendamento ou já definida) */}
@@ -806,33 +813,27 @@ export default function RegistroProcedimentosModal({
                               {(() => {
                                 const profissionaisDaUnidade = getProfissionaisDaUnidade(proc.unidadeExecutoraId)
                                 if (profissionaisDaUnidade.length > 0) {
-                                  const selecionado = profissionaisDaUnidade.find(
-                                    (p) => p.nome === proc.medicoExecutante
-                                  )
-                                  const valorSelect = selecionado ? selecionado.id : ''
                                   return (
-                                    <select
-                                      id={`medico-${proc.execucaoId}`}
-                                      value={valorSelect}
-                                      onChange={(e) => {
-                                        const prof = profissionaisDaUnidade.find((p) => p.id === e.target.value)
-                                        handleMedicoExecutanteChange(index, prof ? prof.nome : '')
+                                    <SearchableSelect
+                                      options={profissionaisDaUnidade
+                                        .map(p => ({
+                                          value: p.id,
+                                          label: p.nome + (p.cboRelacao?.codigo
+                                            ? ` (${p.cboRelacao.codigo} - ${p.cboRelacao.descricao})`
+                                            : (p.cbo ? ` (${p.cbo})` : ''))
+                                        }))}
+                                      value={proc.medicoExecutanteId} // Use medicoExecutanteId for the ID
+                                      onChange={(val) => {
+                                        const novos = [...procedimentos];
+                                        novos[index].medicoExecutanteId = val;
+                                        const prof = profissionaisDaUnidade.find((p) => p.id === val);
+                                        novos[index].medicoExecutante = prof ? prof.nome : ''; // Store name for display/legacy
+                                        setProcedimentos(novos);
                                       }}
-                                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                      placeholder="Selecione o médico..."
+                                      emptyMessage="Nenhum médico encontrado"
                                       disabled={submitting || carregandoProfissionais}
-                                    >
-                                      <option value="">Selecione o médico executante</option>
-                                      {profissionaisDaUnidade.map((p) => {
-                                        const cboLabel = p.cboRelacao?.codigo
-                                          ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
-                                          : ''
-                                        return (
-                                          <option key={p.id} value={p.id}>
-                                            {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
-                                          </option>
-                                        )
-                                      })}
-                                    </select>
+                                    />
                                   )
                                 }
 
