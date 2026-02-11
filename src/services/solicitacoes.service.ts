@@ -1,15 +1,23 @@
 import { PrismaClient, StatusSolicitacao, TipoOci } from '@prisma/client';
-import { STATUS_EXECUCAO } from '../constants/status-execucao';
 import { calcularDataPrazo, calcularDiasRestantes, competenciaDeData, competenciaDeDataUTC, determinarNivelAlerta, proximaCompetencia, calcularDecimoDiaUtilMesSeguinte, dataFimCompetencia, dataLimiteRegistroOncologico } from '../utils/date.utils';
 import { gerarNumeroProtocolo } from '../utils/gerador-protocolo.utils';
 import {
   validarMotivoSaida,
   validarProcedimentosObrigatoriosOci,
   obrigatoriosSatisfeitos,
-  isProcedimentoAnatomoPatologico,
+  isProcedimentoConsultaOuTeleconsulta,
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
+
+/** Procedimentos de biópsia só podem ser EXECUTADO após registro do resultado (nome contém "biópsia" ou "biopsia"). */
+function isProcedimentoBiopsia(nome: string): boolean {
+  const n = (nome || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // remove todos os acentos (ó -> o)
+  return n.includes('biopsia');
+}
 
 /** Consulta médica especializada (presencial ou teleconsulta): nome contém "consulta" e "especializada". */
 function isConsultaMedicaEspecializada(nome: string): boolean {
@@ -33,9 +41,6 @@ export class SolicitacoesService {
     observacoes?: string;
     unidadeOrigem: string;
     unidadeDestino?: string;
-    unidadeOrigemId?: string;
-    unidadeDestinoId?: string;
-    medicoSolicitanteId?: string;
     criadoPorId: string;
   }) {
     // Buscar OCI para obter tipo e prazo
@@ -48,11 +53,10 @@ export class SolicitacoesService {
       throw new Error('OCI não encontrada');
     }
 
-    // Corrigido: considerar todos os procedimentos da OCI, inclusive customizados
-    const procedimentosParaRegistrar = oci.procedimentos;
-    if (procedimentosParaRegistrar.length === 0) {
+    const procedimentosSigtap = oci.procedimentos.filter((p) => p.codigoSigtap != null);
+    if (procedimentosSigtap.length === 0) {
       throw new Error(
-        'Esta OCI não possui procedimentos cadastrados. Utilize apenas OCIs importadas ou configure os procedimentos manualmente.'
+        'Esta OCI não possui procedimentos da tabela SIGTAP. Utilize apenas OCIs importadas da tabela SIGTAP (npm run importar:ocis-sigtap).'
       );
     }
 
@@ -69,164 +73,93 @@ export class SolicitacoesService {
     const competenciaInicioApac = null; // Será calculado quando o primeiro procedimento for executado
     const competenciaFimApac = null; // Será calculado quando o primeiro procedimento for executado
 
-    const solicitacao = await this.prisma.$transaction(async (tx) => {
-      const sol = await tx.solicitacaoOci.create({
-        data: {
-          numeroProtocolo,
-          pacienteId: data.pacienteId,
-          ociId: data.ociId,
-          tipo: oci.tipo,
-          dataSolicitacao,
-          dataPrazo,
-          competenciaInicioApac,
-          competenciaFimApac,
-          tipoApac: '3', // APAC Única conforme Manual PMAE/OCI
-          observacoes: data.observacoes,
-          unidadeOrigem: data.unidadeOrigem,
-          unidadeDestino: data.unidadeDestino,
-          unidadeOrigemId: data.unidadeOrigemId,
-          unidadeDestinoId: data.unidadeDestinoId,
-          medicoSolicitanteId: data.medicoSolicitanteId,
-          criadoPorId: data.criadoPorId,
-          status: StatusSolicitacao.PENDENTE
-        }
-      });
-
-      if (procedimentosParaRegistrar.length > 0) {
-        await tx.execucaoProcedimento.createMany({
-          data: procedimentosParaRegistrar.map((proc) => ({
-            solicitacaoId: sol.id,
-            procedimentoId: proc.id,
-            status: STATUS_EXECUCAO.PENDENTE
-          }))
-        });
+    // Criar solicitação
+    // tipoApac = "3" (APAC Única, não admite continuidade) conforme Manual PMAE/OCI
+    const solicitacao = await this.prisma.solicitacaoOci.create({
+      data: {
+        numeroProtocolo,
+        pacienteId: data.pacienteId,
+        ociId: data.ociId,
+        tipo: oci.tipo,
+        dataSolicitacao,
+        dataPrazo,
+        competenciaInicioApac,
+        competenciaFimApac,
+        tipoApac: '3', // APAC Única conforme Manual PMAE/OCI
+        observacoes: data.observacoes,
+        unidadeOrigem: data.unidadeOrigem,
+        unidadeDestino: data.unidadeDestino,
+        criadoPorId: data.criadoPorId,
+        status: StatusSolicitacao.PENDENTE
       }
+    });
 
-      const diasRestantes = calcularDiasRestantes(dataPrazo);
-      await tx.alertaPrazo.create({
-        data: {
-          solicitacaoId: sol.id,
-          diasRestantes,
-          nivelAlerta: determinarNivelAlerta(diasRestantes, oci.tipo)
-        }
+    // Criar execuções apenas para procedimentos da tabela SIGTAP (codigoSigtap preenchido)
+    if (procedimentosSigtap.length > 0) {
+      await this.prisma.execucaoProcedimento.createMany({
+        data: procedimentosSigtap.map((proc) => ({
+          solicitacaoId: solicitacao.id,
+          procedimentoId: proc.id,
+          status: 'PENDENTE'
+        }))
       });
+    }
 
-      return sol;
+    // Criar alerta inicial
+    const diasRestantes = calcularDiasRestantes(dataPrazo);
+    await this.prisma.alertaPrazo.create({
+      data: {
+        solicitacaoId: solicitacao.id,
+        diasRestantes,
+        nivelAlerta: determinarNivelAlerta(diasRestantes, oci.tipo)
+      }
     });
 
     return await this.buscarSolicitacaoPorId(solicitacao.id);
   }
 
   async buscarSolicitacaoPorId(id: string) {
-    let solicitacao = await this.prisma.solicitacaoOci.findFirst({
-      where: { id, deletedAt: null },
+    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
+      where: { id },
       include: {
         paciente: true,
         oci: {
           include: {
-            procedimentos: { orderBy: { ordem: 'asc' } }
+            procedimentos: {
+              orderBy: { ordem: 'asc' }
+            }
           }
         },
         execucoes: {
           include: {
-            procedimento: true,
-            unidadeExecutoraRef: { select: { cnes: true, nome: true } }
+            procedimento: true
           },
-          orderBy: { procedimento: { ordem: 'asc' } }
+          orderBy: {
+            procedimento: {
+              ordem: 'asc'
+            }
+          }
         },
-        medicoSolicitante: { select: { id: true, nome: true, cns: true } },
-        criadoPor: { select: { id: true, nome: true, email: true } },
-        atualizadoPor: { select: { id: true, nome: true, email: true } },
+        criadoPor: {
+          select: {
+            id: true,
+            nome: true,
+            email: true
+          }
+        },
+        atualizadoPor: {
+          select: {
+            id: true,
+            nome: true,
+            email: true
+          }
+        },
         alerta: true,
-        anexos: { orderBy: { createdAt: 'desc' } }
+        anexos: {
+          orderBy: { createdAt: 'desc' }
+        }
       }
     });
-
-    if (!solicitacao) {
-      throw new Error('Solicitação não encontrada');
-    }
-
-    // Sincronizar execuções pendentes para procedimentos novos
-    if (solicitacao.oci && solicitacao.oci.procedimentos && solicitacao.oci.procedimentos.length) {
-      const execucaoIds = new Set((solicitacao.execucoes || []).map(e => e.procedimento.id));
-      const novosProcedimentos = solicitacao.oci.procedimentos.filter(p => !execucaoIds.has(p.id));
-      if (novosProcedimentos.length > 0) {
-        const solicitacaoId = solicitacao.id;
-        if (!solicitacaoId) {
-          throw new Error('Solicitação não encontrada ao criar execuções.');
-        }
-        await Promise.all(novosProcedimentos.map(p =>
-          this.prisma.execucaoProcedimento.create({
-            data: {
-              solicitacaoId,
-              procedimentoId: p.id,
-              status: STATUS_EXECUCAO.PENDENTE
-            }
-          })
-        ));
-        // Recarregar execucoes
-        solicitacao = await this.prisma.solicitacaoOci.findFirst({
-          where: { id, deletedAt: null },
-          include: {
-            paciente: true,
-            oci: { include: { procedimentos: { orderBy: { ordem: 'asc' } } } },
-            execucoes: {
-              include: {
-                procedimento: true,
-                unidadeExecutoraRef: { select: { cnes: true, nome: true } }
-              },
-              orderBy: { procedimento: { ordem: 'asc' } }
-            },
-            medicoSolicitante: { select: { id: true, nome: true, cns: true } },
-            criadoPor: { select: { id: true, nome: true, email: true } },
-            atualizadoPor: { select: { id: true, nome: true, email: true } },
-            alerta: true,
-            anexos: { orderBy: { createdAt: 'desc' } }
-          }
-        });
-        if (!solicitacao) {
-          throw new Error('Solicitação não encontrada após sincronizar execuções.');
-        }
-      }
-    }
-
-    // Garantir para o TypeScript que solicitacao não é null após possíveis recarregamentos
-    if (!solicitacao) {
-      throw new Error('Solicitação não encontrada após todas as tentativas de sincronização.');
-    }
-
-    // Enriquecer execuções: quando unidadeExecutora contém UUID (ID no campo errado), resolver o nome
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (solicitacao?.execucoes?.length) {
-      const execucoesEnriquecidas = await Promise.all(
-        solicitacao.execucoes.map(async (exec: any) => {
-          const valor = exec.unidadeExecutora?.trim();
-          const ehUuid = valor && uuidRegex.test(valor);
-          const semRef = !exec.unidadeExecutoraRef;
-          if (ehUuid && semRef) {
-            const unidade = await this.prisma.unidadeSaude.findUnique({
-              where: { id: valor },
-              select: { id: true, cnes: true, nome: true }
-            });
-            if (unidade) {
-              const displayNome = `${unidade.cnes} - ${unidade.nome}`;
-              // Corrigir no banco para não precisar enriquecer em toda requisição
-              await this.prisma.execucaoProcedimento.update({
-                where: { id: exec.id },
-                data: { unidadeExecutora: displayNome, unidadeExecutoraId: unidade.id }
-              }).catch(() => {});
-              return {
-                ...exec,
-                unidadeExecutora: displayNome,
-                unidadeExecutoraRef: { cnes: unidade.cnes, nome: unidade.nome }
-              };
-            }
-          }
-          return exec;
-        })
-      );
-      solicitacao = { ...solicitacao, execucoes: execucoesEnriquecidas };
-    }
 
     // Adicionar prazos APAC quando houver competências (2 competências - Portaria 1640/2024)
     // Oncológico: primeiro critério 30 dias desde a consulta; considera-se também 2 competências
@@ -261,18 +194,15 @@ export class SolicitacoesService {
     observacoes?: string | null;
     unidadeOrigem?: string;
     unidadeDestino?: string | null;
-    unidadeOrigemId?: string | null;
-    unidadeDestinoId?: string | null;
     ociId?: string;
-    medicoSolicitanteId?: string | null;
   }) {
     // Validar campos obrigatórios
     if (data.unidadeOrigem !== undefined && !data.unidadeOrigem.trim()) {
       throw new Error('Unidade de origem é obrigatória');
     }
 
-    const solicitacaoAtual = await this.prisma.solicitacaoOci.findFirst({
-      where: { id, deletedAt: null },
+    const solicitacaoAtual = await this.prisma.solicitacaoOci.findUnique({
+      where: { id },
       include: { execucoes: true, oci: true }
     });
 
@@ -283,7 +213,7 @@ export class SolicitacoesService {
     // Se estiver alterando a OCI, verificar se nenhum procedimento foi registrado
     if (data.ociId && data.ociId !== solicitacaoAtual.ociId) {
       const algumRegistrado = solicitacaoAtual.execucoes.some(
-        (e) => e.status !== STATUS_EXECUCAO.PENDENTE || e.dataExecucao != null
+        (e) => e.status !== 'PENDENTE' || e.dataExecucao != null
       );
       if (algumRegistrado) {
         throw new Error(
@@ -291,6 +221,7 @@ export class SolicitacoesService {
         );
       }
 
+      // Buscar nova OCI com procedimentos SIGTAP
       const novaOci = await this.prisma.oci.findUnique({
         where: { id: data.ociId },
         include: { procedimentos: { where: { codigoSigtap: { not: null } }, orderBy: { ordem: 'asc' } } }
@@ -305,58 +236,56 @@ export class SolicitacoesService {
         throw new Error('A OCI selecionada não possui procedimentos da tabela SIGTAP.');
       }
 
+      // Remover execuções antigas
+      await this.prisma.execucaoProcedimento.deleteMany({ where: { solicitacaoId: id } });
+
+      // Recalcular data de prazo conforme novo tipo de OCI
       const dataSolicitacao = solicitacaoAtual.dataSolicitacao;
       const dataPrazo = calcularDataPrazo(novaOci.tipo, dataSolicitacao);
       const diasRestantes = calcularDiasRestantes(dataPrazo);
       const nivelAlerta = determinarNivelAlerta(diasRestantes, novaOci.tipo);
 
-      await this.prisma.$transaction(async (tx) => {
-        await tx.execucaoProcedimento.deleteMany({ where: { solicitacaoId: id } });
+      // Atualizar solicitação (ociId, tipo, dataPrazo e demais campos)
+      await this.prisma.solicitacaoOci.update({
+        where: { id },
+        data: {
+          ociId: data.ociId,
+          tipo: novaOci.tipo,
+          dataPrazo,
+          observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
+          unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
+          unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
+          updatedAt: new Date()
+        }
+      });
 
-        await tx.solicitacaoOci.update({
-          where: { id },
-          data: {
-            ociId: data.ociId,
-            tipo: novaOci.tipo,
-            dataPrazo,
-            observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
-            unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
-            unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
-            unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
-            unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
-            medicoSolicitanteId: data.medicoSolicitanteId !== undefined ? data.medicoSolicitanteId : solicitacaoAtual.medicoSolicitanteId,
-            updatedAt: new Date()
-          }
-        });
+      // Criar novas execuções para os procedimentos da nova OCI
+      await this.prisma.execucaoProcedimento.createMany({
+        data: procedimentosSigtap.map((proc) => ({
+          solicitacaoId: id,
+          procedimentoId: proc.id,
+          status: 'PENDENTE'
+        }))
+      });
 
-        await tx.execucaoProcedimento.createMany({
-          data: procedimentosSigtap.map((proc) => ({
-            solicitacaoId: id,
-            procedimentoId: proc.id,
-            status: STATUS_EXECUCAO.PENDENTE
-          }))
-        });
-
-        await tx.alertaPrazo.upsert({
-          where: { solicitacaoId: id },
-          update: { diasRestantes, nivelAlerta },
-          create: {
-            solicitacaoId: id,
-            diasRestantes,
-            nivelAlerta
-          }
-        });
+      // Atualizar ou criar alerta de prazo
+      await this.prisma.alertaPrazo.upsert({
+        where: { solicitacaoId: id },
+        update: { diasRestantes, nivelAlerta },
+        create: {
+          solicitacaoId: id,
+          diasRestantes,
+          nivelAlerta
+        }
       });
     } else {
+      // Apenas atualizar campos editáveis (sem troca de OCI)
       await this.prisma.solicitacaoOci.update({
         where: { id },
         data: {
           observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
           unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
           unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
-          unidadeOrigemId: data.unidadeOrigemId !== undefined ? data.unidadeOrigemId : solicitacaoAtual.unidadeOrigemId,
-          unidadeDestinoId: data.unidadeDestinoId !== undefined ? data.unidadeDestinoId : solicitacaoAtual.unidadeDestinoId,
-          medicoSolicitanteId: data.medicoSolicitanteId !== undefined ? data.medicoSolicitanteId : solicitacaoAtual.medicoSolicitanteId,
           updatedAt: new Date()
         }
       });
@@ -387,7 +316,7 @@ export class SolicitacoesService {
       const limit = filtros.limit || 20;
       const skip = (page - 1) * limit;
 
-      const where: any = { deletedAt: null };
+      const where: any = {};
 
       // Filtro por execuções: executante (perfil EXECUTANTE) e/ou unidade executante (agendamentos na unidade)
       const execucoesFilter: any = {};
@@ -399,14 +328,14 @@ export class SolicitacoesService {
         });
         if (usuarioExecutante?.unidadeExecutanteId && usuarioExecutante.unidadeExecutante) {
           const u = usuarioExecutante.unidadeExecutante;
-          execucoesFilter.status = STATUS_EXECUCAO.AGENDADO;
+          execucoesFilter.status = 'AGENDADO';
           execucoesFilter.unidadeExecutora = `${u.cnes} - ${u.nome}`;
         } else {
           execucoesFilter.executanteId = filtros.executanteId;
         }
       }
       if (filtros.unidadeExecutora && filtros.unidadeExecutora.trim()) {
-        execucoesFilter.status = STATUS_EXECUCAO.AGENDADO;
+        execucoesFilter.status = 'AGENDADO';
         execucoesFilter.unidadeExecutora = filtros.unidadeExecutora.trim();
       }
       if (Object.keys(execucoesFilter).length > 0) {
@@ -459,35 +388,7 @@ export class SolicitacoesService {
                 id: true,
                 codigo: true,
                 nome: true,
-                tipo: true,
-                procedimentos: {
-                  where: { obrigatorio: true },
-                  select: {
-                    id: true,
-                    codigo: true,
-                    nome: true
-                  }
-                }
-              }
-            },
-            medicoSolicitante: {
-              select: {
-                id: true,
-                nome: true,
-                cns: true
-              }
-            },
-            execucoes: {
-              select: {
-                id: true,
-                status: true,
-                procedimento: {
-                  select: {
-                    id: true,
-                    codigo: true,
-                    nome: true
-                  }
-                }
+                tipo: true
               }
             },
             alerta: true
@@ -504,51 +405,11 @@ export class SolicitacoesService {
       const solicitacoesComPrazoApac = solicitacoes.map((sol: any) => {
         try {
           if (sol.competenciaFimApac) {
-            // Verificar se todos os procedimentos obrigatórios estão satisfeitos
-            // Usar a função obrigatoriosSatisfeitos que trata corretamente o grupo consulta/teleconsulta
-            const procedimentosObrigatorios = sol.oci?.procedimentos || [];
-            let todosObrigatoriosRealizados = false;
-
-            if (procedimentosObrigatorios.length > 0) {
-              const procedimentosObrigatoriosMapeados: ProcedimentoObrigatorio[] = 
-                procedimentosObrigatorios.map((p: any) => ({
-                  id: p.id,
-                  codigo: p.codigo,
-                  nome: p.nome
-                }));
-
-              const execucoesMapeadas: ExecucaoParaValidacao[] = 
-                (sol.execucoes || []).map((e: any) => ({
-                  status: e.status,
-                  procedimento: {
-                    id: e.procedimento.id,
-                    codigo: e.procedimento.codigo,
-                    nome: e.procedimento.nome
-                  }
-                }));
-
-              todosObrigatoriosRealizados = obrigatoriosSatisfeitos(
-                procedimentosObrigatoriosMapeados,
-                execucoesMapeadas
-              );
-            }
-
             const prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(sol.competenciaFimApac);
             const tipoOci = sol.oci?.tipo ?? sol.tipo;
             const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
               : dataFimCompetencia(sol.competenciaFimApac);
-            
-            // Se todos obrigatórios estão satisfeitos, não exibir alerta de dias restantes
-            if (todosObrigatoriosRealizados) {
-              return {
-                ...sol,
-                prazoApresentacaoApac,
-                dataFimValidadeApac,
-                alerta: null // Remover alerta se todos obrigatórios foram satisfeitos
-              };
-            }
-
             const diasRestantesRegistro = calcularDiasRestantes(dataFimValidadeApac);
             const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, sol.oci?.tipo || 'GERAL');
             const alertaEnriquecido = sol.alerta
@@ -601,8 +462,8 @@ export class SolicitacoesService {
     atualizadoPorId: string,
     justificativaCancelamento?: string
   ) {
-    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
-      where: { id, deletedAt: null },
+    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
+      where: { id },
       include: { oci: true }
     });
 
@@ -626,14 +487,6 @@ export class SolicitacoesService {
     }
 
     if (status === StatusSolicitacao.CONCLUIDA && !solicitacao.dataConclusao) {
-      // Validação obrigatória: número de autorização APAC deve estar registrado
-      if (!solicitacao.numeroAutorizacaoApac) {
-        throw new Error(
-          'Não é possível marcar como concluída: é obrigatório registrar o número de autorização APAC antes da conclusão. ' +
-          'Use a opção "Registrar APAC" para informar o número de autorização.'
-        );
-      }
-
       // Só efetivar "Marcar concluída" se os procedimentos obrigatórios da OCI estiverem registrados como realizados
       const ociComProcedimentos = await this.prisma.oci.findUnique({
         where: { id: solicitacao.ociId },
@@ -692,20 +545,12 @@ export class SolicitacoesService {
   }
 
   async atualizarAlertaPrazo(solicitacaoId: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
-      where: { id: solicitacaoId, deletedAt: null },
+    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
+      where: { id: solicitacaoId },
       include: { oci: true }
     });
 
-    if (!solicitacao) {
-      return;
-    }
-
-    // Se a solicitação está concluída ou cancelada, remover o alerta
-    if (solicitacao.status === StatusSolicitacao.CONCLUIDA || solicitacao.status === StatusSolicitacao.CANCELADA) {
-      await this.prisma.alertaPrazo.deleteMany({
-        where: { solicitacaoId }
-      });
+    if (!solicitacao || solicitacao.status === StatusSolicitacao.CONCLUIDA) {
       return;
     }
 
@@ -751,7 +596,6 @@ export class SolicitacoesService {
       observacoes?: string;
       profissional?: string;
       unidadeExecutora?: string;
-      unidadeExecutoraId?: string | null;
       executanteId?: string | null;
       resultadoBiopsia?: string | null;
       dataColetaMaterialBiopsia?: Date | string | null;
@@ -767,37 +611,40 @@ export class SolicitacoesService {
       throw new Error('Execução não encontrada');
     }
 
-    // ANATOMO-PATOLÓGICO: determinar status automaticamente baseado nas datas
-    const obrigatorio = (execucaoAtual.procedimento as any).obrigatorio !== false;
-    const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(execucaoAtual.procedimento.nome);
-    
-    if (ehAnatomoPatologicoObrigatorio) {
-      const dataColetaFinal = data.dataColetaMaterialBiopsia || execucaoAtual.dataColetaMaterialBiopsia;
-      const dataResultadoFinal = data.dataRegistroResultadoBiopsia || execucaoAtual.dataRegistroResultadoBiopsia;
-      
-      // Se está tentando marcar como REALIZADO mas não tem as duas datas
-      if (data.status === STATUS_EXECUCAO.REALIZADO) {
-        if (!dataColetaFinal || !dataResultadoFinal) {
-          throw new Error(
-            'Para procedimentos anatomo-patológicos obrigatórios, é necessário informar a data de coleta de material e a data do resultado para marcar como realizado.'
-          );
-        }
+    const ehBiopsia = isProcedimentoBiopsia(execucaoAtual.procedimento.nome);
+    if (data.status === 'EXECUTADO' && ehBiopsia) {
+      const resultadoInformado = (data.resultadoBiopsia ?? '').toString().trim();
+      const jaTinhaResultado = Boolean(execucaoAtual.resultadoBiopsia?.trim());
+      if (!resultadoInformado && !jaTinhaResultado) {
+        throw new Error(
+          'Procedimentos de biópsia só podem ser assinalados como realizado após o registro do resultado. Informe o resultado da biópsia antes de marcar como realizado.'
+        );
       }
-      
-      // Se não está explicitamente definindo um status, determinar automaticamente
-      if (!data.status || data.status === STATUS_EXECUCAO.PENDENTE) {
-        if (dataColetaFinal && dataResultadoFinal) {
-          // Tem ambas as datas: REALIZADO
-          data.status = STATUS_EXECUCAO.REALIZADO;
-          if (!data.dataExecucao && !execucaoAtual.dataExecucao) {
-            data.dataExecucao = dataResultadoFinal; // Usar data do resultado como data de execução
+    }
+
+    // Só permitir marcar outros procedimentos como EXECUTADO se a consulta médica especializada já tiver sido realizada
+    const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
+    if (data.status === 'EXECUTADO' && !ehConsultaEspecializada) {
+      const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findUnique({
+        where: { id: execucaoAtual.solicitacaoId },
+        include: {
+          execucoes: {
+            include: { procedimento: true }
           }
-        } else if (dataColetaFinal) {
-          // Tem só coleta: AGUARDANDO_RESULTADO
-          data.status = STATUS_EXECUCAO.AGUARDANDO_RESULTADO;
-        } else {
-          // Não tem nenhuma data: PENDENTE
-          data.status = STATUS_EXECUCAO.PENDENTE;
+        }
+      });
+      if (solicitacaoComExecucoes) {
+        const consultaJaRealizada = solicitacaoComExecucoes.execucoes.some(
+          (e) =>
+            e.id !== id &&
+            isConsultaMedicaEspecializada(e.procedimento.nome) &&
+            e.status === 'EXECUTADO' &&
+            e.dataExecucao != null
+        );
+        if (!consultaJaRealizada) {
+          throw new Error(
+            'O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.'
+          );
         }
       }
     }
@@ -805,79 +652,6 @@ export class SolicitacoesService {
     // Normalizar datas para evitar problemas de timezone
     // Garantir que datas sejam interpretadas como início do dia no timezone local
     const dataAtualizacao: any = { ...data };
-
-    // Só permitir marcar outros procedimentos como REALIZADO se a consulta médica especializada já tiver sido realizada
-    const ehConsultaEspecializada = isConsultaMedicaEspecializada(execucaoAtual.procedimento.nome);
-    
-    // Lógica automática para AGUARDANDO_RESULTADO em procedimentos anatomo-patológicos (aplicar antes da validação)
-    if (ehAnatomoPatologicoObrigatorio && !data.status) {
-      const temColeta = data.dataColetaMaterialBiopsia != null || 
-                       (execucaoAtual.dataColetaMaterialBiopsia != null && data.dataColetaMaterialBiopsia !== null);
-      const temResultado = data.dataRegistroResultadoBiopsia != null || 
-                          (execucaoAtual.dataRegistroResultadoBiopsia != null && data.dataRegistroResultadoBiopsia !== null);
-      
-      if (temColeta && !temResultado) {
-        // Tem coleta mas não tem resultado -> AGUARDANDO_RESULTADO
-        dataAtualizacao.status = STATUS_EXECUCAO.AGUARDANDO_RESULTADO;
-      } else if (temColeta && temResultado) {
-        // Tem coleta e resultado -> REALIZADO automaticamente (não precisa validar consulta especializada)
-        dataAtualizacao.status = STATUS_EXECUCAO.REALIZADO;
-        // Definir dataExecucao como a data da coleta se não estiver definida
-        if (!data.dataExecucao && !execucaoAtual.dataExecucao) {
-          dataAtualizacao.dataExecucao = data.dataColetaMaterialBiopsia || execucaoAtual.dataColetaMaterialBiopsia;
-        }
-      } else if (!temColeta && !temResultado) {
-        // Não tem coleta nem resultado -> PENDENTE
-        dataAtualizacao.status = STATUS_EXECUCAO.PENDENTE;
-      }
-    }
-    
-    // Aplicar validação da consulta especializada apenas para status explícitos (não automáticos)
-    if (data.status === STATUS_EXECUCAO.REALIZADO && !ehConsultaEspecializada) {
-      // Para procedimentos que NÃO são consulta, permitir registro apenas com unidade executante
-      // Se não houver executanteId, mas houver unidadeExecutoraId, permitir
-      if (!data.executanteId && data.unidadeExecutoraId) {
-        // ok, permitido
-      } else {
-        // Regra original: exige consulta realizada antes dos demais procedimentos
-        const solicitacaoComExecucoes = await this.prisma.solicitacaoOci.findFirst({
-          where: { id: execucaoAtual.solicitacaoId, deletedAt: null },
-          include: {
-            execucoes: {
-              include: { procedimento: true }
-            }
-          }
-        });
-        if (solicitacaoComExecucoes) {
-          const consultaJaRealizada = solicitacaoComExecucoes.execucoes.some(
-            (e) =>
-              e.id !== id &&
-              isConsultaMedicaEspecializada(e.procedimento.nome) &&
-              e.status === STATUS_EXECUCAO.REALIZADO &&
-              e.dataExecucao != null
-          );
-          if (!consultaJaRealizada) {
-            throw new Error(
-              'O registro da consulta médica especializada deve ser realizado antes dos demais procedimentos. Registre primeiro a consulta médica (ou teleconsulta) em atenção especializada.'
-            );
-          }
-        }
-      }
-    }
-
-    // Unidade executora: garantir que unidadeExecutora seja o nome (não UUID)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const unidadeExecutoraPareceUuid = data.unidadeExecutora && uuidRegex.test(String(data.unidadeExecutora).trim());
-    if (data.unidadeExecutoraId || unidadeExecutoraPareceUuid) {
-      const unidadeId = data.unidadeExecutoraId || (unidadeExecutoraPareceUuid ? data.unidadeExecutora?.trim() : null);
-      if (unidadeId) {
-        const unidade = await this.prisma.unidadeSaude.findUnique({ where: { id: unidadeId } });
-        if (unidade) {
-          dataAtualizacao.unidadeExecutora = `${unidade.cnes} - ${unidade.nome}`;
-          dataAtualizacao.unidadeExecutoraId = unidadeId;
-        }
-      }
-    }
     
     if (data.dataExecucao && typeof data.dataExecucao === 'string') {
       // Se vier como string ISO, extrair apenas a parte da data e criar Date local
@@ -892,15 +666,8 @@ export class SolicitacoesService {
       dataAtualizacao.dataExecucao = dataNormalizada;
     }
     
-    // dataAgendamento: aceitar data+hora (agendamento), só data, ou null (para desagendar)
-    if (data.dataAgendamento === null || data.dataAgendamento === undefined) {
-      if (data.status === STATUS_EXECUCAO.PENDENTE) {
-        dataAtualizacao.dataAgendamento = null;
-        dataAtualizacao.unidadeExecutora = null;
-        dataAtualizacao.unidadeExecutoraId = null;
-        dataAtualizacao.executanteId = null;
-      }
-    } else if (data.dataAgendamento && typeof data.dataAgendamento === 'string') {
+    // dataAgendamento: aceitar data+hora (agendamento) ou só data
+    if (data.dataAgendamento && typeof data.dataAgendamento === 'string') {
       if (data.dataAgendamento.includes('T')) {
         dataAtualizacao.dataAgendamento = new Date(data.dataAgendamento);
       } else {
@@ -938,77 +705,30 @@ export class SolicitacoesService {
         dataAtualizacao.dataRegistroResultadoBiopsia = null;
       }
     }
+    if (data.status === 'EXECUTADO' && ehBiopsia && dataAtualizacao.resultadoBiopsia && !dataAtualizacao.dataRegistroResultadoBiopsia) {
+      dataAtualizacao.dataRegistroResultadoBiopsia = new Date();
+    }
     
     // Atualizar a execução
     const execucao = await this.prisma.execucaoProcedimento.update({
       where: { id },
       data: dataAtualizacao,
-      include: { solicitacao: true, procedimento: true }
+      include: { solicitacao: true }
     });
-
-    // Regra consulta/teleconsulta especializada: ao marcar um como REALIZADO, os outros do grupo ficam DISPENSADO no banco
-    const vaiParaExecutado = (data.status === STATUS_EXECUCAO.REALIZADO || dataAtualizacao?.status === STATUS_EXECUCAO.REALIZADO)
-    const ehConsultaOuTeleconsultaEspecializada = isConsultaMedicaEspecializada(execucao.procedimento.nome)
-    if (vaiParaExecutado && ehConsultaOuTeleconsultaEspecializada) {
-      const outrasExecucoes = await this.prisma.execucaoProcedimento.findMany({
-        where: {
-          solicitacaoId: execucao.solicitacaoId,
-          id: { not: id },
-          status: { in: [STATUS_EXECUCAO.PENDENTE, STATUS_EXECUCAO.AGENDADO] }
-        },
-        include: { procedimento: true }
-      });
-      // Só marcar como DISPENSADO se o procedimento for obrigatório (não marcar consultas de retorno não obrigatórias)
-      const outrasConsultaTeleconsulta = outrasExecucoes.filter((e) => {
-        const obrigatorio = (e.procedimento as any).obrigatorio !== false;
-        // NÃO dispensar o procedimento de retorno
-        const ehRetorno = e.procedimento.codigo === 'OCI-RETORNO-01' || e.procedimento.nome.includes('RETORNO');
-        return isConsultaMedicaEspecializada(e.procedimento.nome) && obrigatorio && !ehRetorno;
-      });
-      if (outrasConsultaTeleconsulta.length > 0) {
-        await this.prisma.execucaoProcedimento.updateMany({
-          where: { id: { in: outrasConsultaTeleconsulta.map((e) => e.id) } },
-          data: { status: STATUS_EXECUCAO.DISPENSADO }
-        });
-      }
-    }
-
-    // Reverter DISPENSADO para PENDENTE quando o REALIZADO do grupo é desfeito
-    const vaiParaPendente = (data.status === STATUS_EXECUCAO.PENDENTE || dataAtualizacao?.status === STATUS_EXECUCAO.PENDENTE) &&
-      (data.dataExecucao === null || data.dataExecucao === undefined || dataAtualizacao?.dataExecucao === null)
-    if (vaiParaPendente && ehConsultaOuTeleconsultaEspecializada) {
-      const dispensadas = await this.prisma.execucaoProcedimento.findMany({
-        where: { solicitacaoId: execucao.solicitacaoId, status: STATUS_EXECUCAO.DISPENSADO },
-        include: { procedimento: true }
-      });
-      const idsReverter = dispensadas
-        .filter((e) => {
-          // NÃO reverter o procedimento de retorno
-          const ehRetorno = e.procedimento.codigo === 'OCI-RETORNO-01' || e.procedimento.nome.includes('RETORNO');
-          return isConsultaMedicaEspecializada(e.procedimento.nome) && !ehRetorno;
-        })
-        .map((e) => e.id);
-      if (idsReverter.length > 0) {
-        await this.prisma.execucaoProcedimento.updateMany({
-          where: { id: { in: idsReverter } },
-          data: { status: STATUS_EXECUCAO.PENDENTE }
-        });
-      }
-    }
 
     // APAC: atualizar datas de início/encerramento da validade (Portaria 1640/2024 art. 15)
     // A data base inicial é a data do primeiro procedimento registrado (menor data entre todos)
     // Recalcular sempre que uma execução é atualizada (marcada ou desmarcada)
-    const sol = await this.prisma.solicitacaoOci.findFirst({
-      where: { id: execucao.solicitacaoId, deletedAt: null },
+    const sol = await this.prisma.solicitacaoOci.findUnique({
+      where: { id: execucao.solicitacaoId },
       include: { execucoes: true }
     });
     if (!sol) return execucao;
 
-    // Buscar todas as execuções executadas (status REALIZADO e com dataExecucao não nula)
+    // Buscar todas as execuções executadas (status EXECUTADO e com dataExecucao não nula)
     // Após a atualização acima, a execução já está com o status e data corretos no banco
     const execucoesComData = sol.execucoes.filter(
-      (e) => e.status === STATUS_EXECUCAO.REALIZADO && e.dataExecucao != null
+      (e) => e.status === 'EXECUTADO' && e.dataExecucao != null
     );
 
     const atualizar: { 
@@ -1119,9 +839,29 @@ export class SolicitacoesService {
         }
       }
 
-      // Comentário: Conclusão automática removida - apenas conclusão manual é permitida
-      // A lógica de verificação de procedimentos obrigatórios foi removida pois
-      // a conclusão deve ser sempre manual, exigindo registro prévio do número APAC
+      // Conclusão: obrigatórios satisfeitos (grupo consulta/teleconsulta: basta 1 realizada; demais: todos)
+      let obrigatoriosOk = false;
+      if (ociComProcedimentos && ociComProcedimentos.procedimentos.length > 0) {
+        const procedimentosObrigatorios: ProcedimentoObrigatorio[] =
+          ociComProcedimentos.procedimentos.map((p) => ({
+            id: p.id,
+            codigo: p.codigo,
+            nome: p.nome
+          }));
+        const execucoesComProcedimento: ExecucaoParaValidacao[] = todasExecucoes.map((e) => ({
+          status: e.status,
+          procedimento: { id: e.procedimento.id, codigo: e.procedimento.codigo, nome: e.procedimento.nome }
+        }));
+        obrigatoriosOk = obrigatoriosSatisfeitos(procedimentosObrigatorios, execucoesComProcedimento);
+      } else {
+        // Fallback: sem obrigatórios na OCI, considerar concluída quando todos executados
+        obrigatoriosOk = sol.execucoes.every((e) => e.status === 'EXECUTADO');
+      }
+
+      if (obrigatoriosOk && sol.status !== StatusSolicitacao.CONCLUIDA) {
+        atualizar.dataConclusao = new Date();
+        atualizar.status = StatusSolicitacao.CONCLUIDA;
+      }
     } else {
       // Se não há mais procedimentos executados, limpar as datas de validade APAC
       atualizar.dataInicioValidadeApac = null;
@@ -1168,8 +908,8 @@ export class SolicitacoesService {
   }
 
   async excluirSolicitacao(id: string) {
-    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
-      where: { id, deletedAt: null },
+    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
+      where: { id },
       include: {
         execucoes: {
           select: {
@@ -1195,7 +935,7 @@ export class SolicitacoesService {
 
     // Verificar se há procedimentos executados
     const procedimentosExecutados = solicitacao.execucoes.filter(
-      execucao => execucao.status === STATUS_EXECUCAO.REALIZADO && execucao.dataExecucao !== null
+      execucao => execucao.status === 'EXECUTADO' && execucao.dataExecucao !== null
     );
 
     if (procedimentosExecutados.length > 0) {
@@ -1205,10 +945,9 @@ export class SolicitacoesService {
       );
     }
 
-    // Soft delete: marca como excluída para auditoria (anexos e execuções permanecem)
-    await this.prisma.solicitacaoOci.update({
-      where: { id },
-      data: { deletedAt: new Date() }
+    // Excluir em cascata: anexos, execuções, alerta serão removidos automaticamente
+    await this.prisma.solicitacaoOci.delete({
+      where: { id }
     });
 
     return { message: 'Solicitação excluída com sucesso' };
@@ -1227,8 +966,8 @@ export class SolicitacoesService {
       cidSecundario?: string | null;
     }
   ) {
-    const solicitacao = await this.prisma.solicitacaoOci.findFirst({
-      where: { id, deletedAt: null },
+    const solicitacao = await this.prisma.solicitacaoOci.findUnique({
+      where: { id },
       include: { oci: true }
     });
 

@@ -45,8 +45,7 @@ function ConfirmJustificativaModal({ open, onConfirm, onCancel, title, descricao
 import { useEffect } from 'react'
 import { api } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { Trash2, X, Calendar, CheckCircle } from 'lucide-react'
-import { SearchableSelect } from './SearchableSelect'
+import { X, CheckCircle, Calendar, Trash2 } from 'lucide-react'
 import { getStatusExibicao, isProcedimentoAnatomoPatologico } from '../utils/procedimento-display'
 
 interface ProcedimentoExecucao {
@@ -73,7 +72,6 @@ interface ProfissionalOption {
   id: string
   nome: string
   cns: string
-  cbo?: string
   cboRelacao?: {
     codigo: string
     descricao: string
@@ -82,7 +80,6 @@ interface ProfissionalOption {
     unidade?: {
       id: string
       nome?: string
-      cnes?: string
     } | null
   }[]
 }
@@ -191,7 +188,6 @@ export default function RegistroProcedimentosModal({
     dataColetaMaterialBiopsia: string
     dataRegistroResultadoBiopsia: string
     medicoExecutante: string
-    medicoExecutanteId?: string
   }>>([])
   const [submitting, setSubmitting] = useState(false)
   const [excluindo, setExcluindo] = useState<string | null>(null)
@@ -229,60 +225,53 @@ export default function RegistroProcedimentosModal({
     const procedimentosInicializados = execucoesParaInicializar
       .filter((exec) => idsExecucoesExibir.size === 0 || idsExecucoesExibir.has(exec.id))
       .map((exec) => {
-        const ehBiopsia = isProcedimentoBiopsia(exec.procedimento.nome)
-        const hoje = new Date().toISOString().split('T')[0]
-        const ehConsultaEspecializada = isConsultaMedicaEspecializada(exec.procedimento.nome)
-        const obrigatorio = (exec.procedimento as any).obrigatorio !== false
-        const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(exec.procedimento.nome)
-        const dataColeta = exec.dataColetaMaterialBiopsia
-          ? new Date(exec.dataColetaMaterialBiopsia).toISOString().split('T')[0]
-          : ''
-        const dataRegistro = exec.dataRegistroResultadoBiopsia
-          ? new Date(exec.dataRegistroResultadoBiopsia).toISOString().split('T')[0]
-          : ''
-        const dataAgendamentoStr = (exec as any).dataAgendamento
-          ? new Date((exec as any).dataAgendamento).toISOString().split('T')[0]
-          : ''
-        const ehAgendado = exec.status === 'AGENDADO'
-        const unidadeExecutoraId = (exec as any).unidadeExecutoraId || ''
-        // Resolve o nome da unidade pelo ID, se necessário
-        let unidadeExecutoraNome = (exec as any).unidadeExecutora || '';
-        if (unidadeExecutoraId && !unidadeExecutoraNome && Array.isArray(profissionais)) {
-          const unidade = profissionais
-            .flatMap(p => p.unidades || [])
-            .find(u => u.unidade?.id === unidadeExecutoraId);
-          if (unidade && unidade.unidade) {
-            const nome = unidade.unidade.nome || unidade.unidade.id;
-            const cnes = unidade.unidade.cnes;
-            unidadeExecutoraNome = cnes ? `${cnes} - ${nome}` : nome;
-          } else {
-            unidadeExecutoraNome = '';
-          }
-        }
-        return {
-          execucaoId: exec.id,
-          procedimentoId: exec.procedimento.id,
-          nome: exec.procedimento.nome,
-          codigo: exec.procedimento.codigo,
-          tipo: exec.procedimento.tipo,
-          realizado: exec.status === 'REALIZADO',
-          status: exec.status || 'PENDENTE',
-          dataAgendamento: dataAgendamentoStr,
-          dataExecucao: exec.dataExecucao
-            ? new Date(exec.dataExecucao).toISOString().split('T')[0]
-            : ehAgendado && dataAgendamentoStr ? dataAgendamentoStr : hoje,
-          unidadeExecutoraId,
-          unidadeExecutoraNome,
-          ehBiopsia,
-          ehConsultaEspecializada,
-          ehAnatomoPatologicoObrigatorio,
-          resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
-          dataColetaMaterialBiopsia: dataColeta,
-          dataRegistroResultadoBiopsia: dataRegistro,
-          medicoExecutante: (exec as any).profissional || '',
-          medicoExecutanteId: (exec as any).executanteId || profissionais.find(p => p.nome === ((exec as any).profissional))?.id || ''
-        }
-      })
+      const ehBiopsia = isProcedimentoBiopsia(exec.procedimento.nome)
+      const hoje = new Date().toISOString().split('T')[0]
+      const ehConsultaEspecializada = isConsultaMedicaEspecializada(exec.procedimento.nome)
+      const obrigatorio = (exec.procedimento as any).obrigatorio !== false
+      const ehAnatomoPatologicoObrigatorio = obrigatorio && isProcedimentoAnatomoPatologico(exec.procedimento.nome)
+      const dataColeta = exec.dataColetaMaterialBiopsia
+        ? new Date(exec.dataColetaMaterialBiopsia).toISOString().split('T')[0]
+        : ''
+      const dataRegistro = exec.dataRegistroResultadoBiopsia
+        ? new Date(exec.dataRegistroResultadoBiopsia).toISOString().split('T')[0]
+        : ''
+      const dataAgendamentoStr = (exec as any).dataAgendamento
+        ? new Date((exec as any).dataAgendamento).toISOString().split('T')[0]
+        : ''
+      const ehAgendado = exec.status === 'AGENDADO'
+      const unidadeExecutoraId = (exec as any).unidadeExecutoraId || ''
+      // Resolve o nome da unidade pelo ID, se necessário
+      let unidadeExecutoraNome = (exec as any).unidadeExecutora || '';
+      if (unidadeExecutoraId && !unidadeExecutoraNome && Array.isArray(profissionais)) {
+        const unidade = profissionais
+          .flatMap(p => p.unidades || [])
+          .find(u => u.unidade?.id === unidadeExecutoraId);
+        unidadeExecutoraNome = unidade && unidade.unidade ? (unidade.unidade.nome || unidade.unidade.id) : '';
+      }
+      return {
+        execucaoId: exec.id,
+        procedimentoId: exec.procedimento.id,
+        nome: exec.procedimento.nome,
+        codigo: exec.procedimento.codigo,
+        tipo: exec.procedimento.tipo,
+        realizado: exec.status === 'REALIZADO',
+        status: exec.status || 'PENDENTE',
+        dataAgendamento: dataAgendamentoStr,
+        dataExecucao: exec.dataExecucao
+          ? new Date(exec.dataExecucao).toISOString().split('T')[0]
+          : ehAgendado && dataAgendamentoStr ? dataAgendamentoStr : hoje,
+        unidadeExecutoraId,
+        unidadeExecutoraNome,
+        ehBiopsia,
+        ehConsultaEspecializada,
+        ehAnatomoPatologicoObrigatorio,
+        resultadoBiopsia: (exec.resultadoBiopsia ?? '').toString(),
+        dataColetaMaterialBiopsia: dataColeta,
+        dataRegistroResultadoBiopsia: dataRegistro,
+        medicoExecutante: (exec as any).profissional || ''
+      }
+    })
 
     setProcedimentos(procedimentosInicializados)
     setErro(null)
@@ -361,11 +350,11 @@ export default function RegistroProcedimentosModal({
     )
   }
 
-  const [confirmJustificativa, setConfirmJustificativa] = useState<{ execucaoId: string, index: number, tipo: string } | null>(null)
+  const [confirmJustificativa, setConfirmJustificativa] = useState<{execucaoId: string, index: number, tipo: string} | null>(null)
   // Removido: const [justificativaValor, setJustificativaValor] = useState('')
   const handleExcluirExecucao = (execucaoId: string, index: number) => {
     if (!isAdmin) return
-    setConfirmJustificativa({ execucaoId, index, tipo: 'remover' })
+    setConfirmJustificativa({execucaoId, index, tipo: 'remover'})
   }
   const confirmarExclusao = async (justificativa: string) => {
     if (!confirmJustificativa) return
@@ -402,10 +391,10 @@ export default function RegistroProcedimentosModal({
 
     const procedimentosRealizados = procedimentos.filter(p => p.realizado)
     // Também incluir procedimentos anatomo-patológicos com data de coleta (mesmo não marcados como realizados)
-    const procedimentosComColeta = procedimentos.filter(p =>
-      !p.realizado &&
-      p.ehAnatomoPatologicoObrigatorio &&
-      p.dataColetaMaterialBiopsia &&
+    const procedimentosComColeta = procedimentos.filter(p => 
+      !p.realizado && 
+      p.ehAnatomoPatologicoObrigatorio && 
+      p.dataColetaMaterialBiopsia && 
       !p.dataRegistroResultadoBiopsia
     )
     const consultaJaRealizadaSubmit =
@@ -468,9 +457,7 @@ export default function RegistroProcedimentosModal({
           ? proc.dataExecucao.split('T')[0]
           : proc.dataExecucao
         const [ano, mes, dia] = dataFormatada.split('-').map(Number)
-        // Usar UTC explicitamente para evitar problemas de fuso horário (GMT-3) que transformam 00:00 em dia anterior
-        // Definindo 12:00 UTC garante que no Brasil (GMT-3) seja 09:00 do mesmo dia
-        const dataLocal = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0))
+        const dataLocal = new Date(ano, mes - 1, dia, 12, 0, 0)
 
         const payload: Record<string, unknown> = {
           status: 'REALIZADO',
@@ -485,9 +472,8 @@ export default function RegistroProcedimentosModal({
         if (proc.ehAnatomoPatologicoObrigatorio && proc.dataColetaMaterialBiopsia && proc.dataRegistroResultadoBiopsia) {
           const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
           const [ar, mr, dr] = proc.dataRegistroResultadoBiopsia.split('-').map(Number)
-          // Também ajustar biópsia para UTC 12:00 por segurança
-          payload.dataColetaMaterialBiopsia = new Date(Date.UTC(ac, mc - 1, dc, 12, 0, 0)).toISOString()
-          payload.dataRegistroResultadoBiopsia = new Date(Date.UTC(ar, mr - 1, dr, 12, 0, 0)).toISOString()
+          payload.dataColetaMaterialBiopsia = new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
+          payload.dataRegistroResultadoBiopsia = new Date(ar, mr - 1, dr, 12, 0, 0).toISOString()
         }
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
       })
@@ -495,9 +481,8 @@ export default function RegistroProcedimentosModal({
       // Promises para procedimentos com apenas data de coleta (AGUARDANDO_RESULTADO)
       const promisesColeta = procedimentosComColeta.map(proc => {
         const [ac, mc, dc] = proc.dataColetaMaterialBiopsia.split('-').map(Number)
-        // Usar UTC 12:00
         const payload: Record<string, unknown> = {
-          dataColetaMaterialBiopsia: new Date(Date.UTC(ac, mc - 1, dc, 12, 0, 0)).toISOString()
+          dataColetaMaterialBiopsia: new Date(ac, mc - 1, dc, 12, 0, 0).toISOString()
         }
         // Não definir status explicitamente - deixar o backend determinar (AGUARDANDO_RESULTADO)
         return api.patch(`/solicitacoes/execucoes/${proc.execucaoId}`, payload)
@@ -525,7 +510,7 @@ export default function RegistroProcedimentosModal({
       } else if (procedimentosComColeta.length > 0) {
         mensagem = `${procedimentosComColeta.length} procedimento(s) com coleta registrada - aguardando resultado!`
       }
-
+      
       setSucesso(mensagem)
       setTimeout(() => {
         onSuccess?.()
@@ -602,331 +587,331 @@ export default function RegistroProcedimentosModal({
               const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
               const dispensado = statusExibicao === 'DISPENSADO'
               return (
-                <div
-                  key={proc.execucaoId}
-                  className={`border rounded p-2 transition-colors ${proc.realizado
+              <div
+                key={proc.execucaoId}
+                className={`border rounded p-2 transition-colors ${
+                  proc.realizado
                     ? 'border-green-300 bg-green-50'
                     : dispensado
-                      ? 'border-slate-200 bg-slate-50'
-                      : 'border-gray-200 bg-white'
-                    }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {/* Checkbox - desabilitado quando dispensado */}
-                    <div className="flex items-center pt-0.5">
-                      <input
-                        type="checkbox"
-                        id={`proc-${proc.execucaoId}`}
-                        checked={proc.realizado}
-                        onChange={() => handleToggleRealizado(index)}
-                        disabled={
-                          submitting ||
-                          dispensado ||
-                          !podeRegistrarPorData(proc) ||
-                          (!proc.ehConsultaEspecializada && !consultaJaRealizada) ||
-                          (proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia))
-                        }
-                        title={
-                          dispensado
-                            ? 'Dispensado: outra consulta/teleconsulta já foi realizada'
-                            : !podeRegistrarPorData(proc)
-                              ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
-                              : !proc.ehConsultaEspecializada && !consultaJaRealizada
-                                ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
-                                : proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia)
-                                  ? 'Informe a data de coleta de material e a data do resultado'
-                                  : undefined
-                        }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
-                      />
+                    ? 'border-slate-200 bg-slate-50'
+                    : 'border-gray-200 bg-white'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {/* Checkbox - desabilitado quando dispensado */}
+                  <div className="flex items-center pt-0.5">
+                    <input
+                      type="checkbox"
+                      id={`proc-${proc.execucaoId}`}
+                      checked={proc.realizado}
+                      onChange={() => handleToggleRealizado(index)}
+                      disabled={
+                        submitting ||
+                        dispensado ||
+                        !podeRegistrarPorData(proc) ||
+                        (!proc.ehConsultaEspecializada && !consultaJaRealizada) ||
+                        (proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia))
+                      }
+                      title={
+                        dispensado
+                          ? 'Dispensado: outra consulta/teleconsulta já foi realizada'
+                          : !podeRegistrarPorData(proc)
+                            ? `O registro de realização do procedimento é permitido exclusivamente na data do agendamento (${proc.dataAgendamento ? proc.dataAgendamento.split('-').reverse().join('/') : ''}) ou em caráter retroativo.`
+                            : !proc.ehConsultaEspecializada && !consultaJaRealizada
+                              ? 'Consulta especializada ou teleconsulta é pré-requisito obrigatório'
+                              : proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (!proc.dataColetaMaterialBiopsia || !proc.dataRegistroResultadoBiopsia)
+                                ? 'Informe a data de coleta de material e a data do resultado'
+                                : undefined
+                      }
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-1 focus:ring-blue-500 disabled:opacity-60"
+                    />
+                  </div>
+
+                  {/* Informações do Procedimento */}
+                  <div className="flex-1 min-w-0">
+                    {/* Nome e código do procedimento */}
+                    <div className="flex items-center gap-2 mb-0">
+                      <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 rounded-full font-medium text-xs shrink-0">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <label
+                          htmlFor={`proc-${proc.execucaoId}`}
+                          className="text-xs font-medium text-gray-900 cursor-pointer block"
+                        >
+                          {proc.nome}
+                        </label>
+                        <p className="text-[10px] text-gray-500">
+                          {proc.tipo} - {proc.codigo}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* Informações do Procedimento */}
-                    <div className="flex-1 min-w-0">
-                      {/* Nome e código do procedimento */}
-                      <div className="flex items-center gap-2 mb-0">
-                        <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 rounded-full font-medium text-xs shrink-0">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <label
-                            htmlFor={`proc-${proc.execucaoId}`}
-                            className="text-xs font-medium text-gray-900 cursor-pointer block"
-                          >
-                            {proc.nome}
+                    {/* Aviso quando agendamento é em data futura: não permite registrar até a data */}
+                    {proc.status === 'AGENDADO' && proc.dataAgendamento && !podeRegistrarPorData(proc) && (
+                      <p className="text-[10px] text-amber-700 mt-1 ml-8 pl-3 border-l-2 border-amber-300 bg-amber-50/80 rounded-r py-1 pr-2">
+                        O registro de realização do procedimento é permitido exclusivamente na data do agendamento ({proc.dataAgendamento.split('-').reverse().join('/')}) ou em caráter retroativo.
+                      </p>
+                    )}
+
+                    {/* ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado */}
+                    {proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (
+                      <div className="mt-1.5 ml-8 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label htmlFor={`coleta-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Data de coleta de material <span className="text-red-500">*</span>
                           </label>
-                          <p className="text-[10px] text-gray-500">
-                            {proc.tipo} - {proc.codigo}
-                          </p>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`coleta-${proc.execucaoId}`}
+                              value={proc.dataColetaMaterialBiopsia}
+                              onChange={(e) => handleDataColetaChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              max={hoje}
+                            />
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Aviso quando agendamento é em data futura: não permite registrar até a data */}
-                      {proc.status === 'AGENDADO' && proc.dataAgendamento && !podeRegistrarPorData(proc) && (
-                        <p className="text-[10px] text-amber-700 mt-1 ml-8 pl-3 border-l-2 border-amber-300 bg-amber-50/80 rounded-r py-1 pr-2">
-                          O registro de realização do procedimento é permitido exclusivamente na data do agendamento ({proc.dataAgendamento.split('-').reverse().join('/')}) ou em caráter retroativo.
+                        <div>
+                          <label htmlFor={`resultado-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                            Data do resultado <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`resultado-${proc.execucaoId}`}
+                              value={proc.dataRegistroResultadoBiopsia}
+                              onChange={(e) => handleDataResultadoChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              min={proc.dataColetaMaterialBiopsia || undefined}
+                              max={hoje}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-amber-700 sm:col-span-2">
+                          Procedimentos anatomo-patológicos obrigatórios exigem data de coleta e data do resultado para serem marcados como realizados.
                         </p>
-                      )}
+                      </div>
+                    )}
 
-                      {/* ANATOMO-PATOLÓGICO obrigatório: exige data de coleta e data de resultado */}
-                      {proc.ehAnatomoPatologicoObrigatorio && !proc.realizado && (
-                        <div className="mt-1.5 ml-8 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Data de execução (visível apenas se marcado como realizado) */}
+                    {proc.realizado && (
+                      <div className="mt-1.5 ml-8 space-y-1.5">
+                        {/* Unidade executante (seleção obrigatória para qualquer procedimento realizado se não houver unidade definida) */}
+                        {!proc.unidadeExecutoraId && (
                           <div>
-                            <label htmlFor={`coleta-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Data de coleta de material <span className="text-red-500">*</span>
+                            <label htmlFor={`unidade-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
+                              Unidade executante <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                              <input
-                                type="date"
-                                id={`coleta-${proc.execucaoId}`}
-                                value={proc.dataColetaMaterialBiopsia}
-                                onChange={(e) => handleDataColetaChange(index, e.target.value)}
-                                className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                disabled={submitting}
-                                max={hoje}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label htmlFor={`resultado-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
-                              Data do resultado <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                              <input
-                                type="date"
-                                id={`resultado-${proc.execucaoId}`}
-                                value={proc.dataRegistroResultadoBiopsia}
-                                onChange={(e) => handleDataResultadoChange(index, e.target.value)}
-                                className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                disabled={submitting}
-                                min={proc.dataColetaMaterialBiopsia || undefined}
-                                max={hoje}
-                              />
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-amber-700 sm:col-span-2">
-                            Procedimentos anatomo-patológicos obrigatórios exigem data de coleta e data do resultado para serem marcados como realizados.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Data de execução (visível apenas se marcado como realizado) */}
-                      {proc.realizado && (
-                        <div className="mt-1.5 ml-8 space-y-1.5">
-                          {/* Unidade executante (seleção obrigatória para qualquer procedimento realizado se não houver unidade definida) */}
-                          {!proc.unidadeExecutoraId && (
-                            <div>
-                              <label htmlFor={`unidade-${proc.execucaoId}`} className="block text-xs font-medium text-gray-700 mb-0.5">
-                                Unidade executante <span className="text-red-500">*</span>
-                              </label>
-                              <SearchableSelect
-                                options={Array.from(new Set(profissionais.flatMap(p => p.unidades || []).map(u => u.unidade?.id).filter(Boolean))).map(unidadeId => {
+                            <select
+                              id={`unidade-${proc.execucaoId}`}
+                              value={proc.unidadeExecutoraId || ''}
+                              onChange={e => {
+                                const novos = [...procedimentos];
+                                const unidadeId = e.target.value;
+                                novos[index].unidadeExecutoraId = unidadeId;
+                                // Busca o nome da unidade selecionada
+                                const unidade = profissionais
+                                  .flatMap(p => p.unidades || [])
+                                  .find(u => u.unidade?.id === unidadeId);
+                                novos[index].unidadeExecutoraNome = unidade && unidade.unidade ? (unidade.unidade.nome || unidade.unidade.id) : '';
+                                // Limpa o médico executante ao trocar a unidade
+                                novos[index].medicoExecutante = '';
+                                setProcedimentos(novos);
+                              }}
+                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              required
+                              disabled={submitting}
+                            >
+                              <option value="">Selecione a unidade executante</option>
+                              {profissionais
+                                .flatMap(p => p.unidades?.map(u => u.unidade?.id).filter(Boolean) || [])
+                                .filter((v, i, arr) => v && arr.indexOf(v) === i)
+                                .map(unidadeId => {
+                                  // Busca o nome da unidade pelo id
                                   const unidade = profissionais
                                     .flatMap(p => p.unidades || [])
                                     .find(u => u.unidade?.id === unidadeId);
+                                  return unidade && unidade.unidade ? (
+                                    <option key={unidadeId} value={unidadeId}>
+                                      {unidade.unidade.nome || unidade.unidade.id}
+                                    </option>
+                                  ) : null;
+                                })}
+                            </select>
+                          </div>
+                        )}
+                        {/* Unidade executante (vinda do agendamento ou já definida) */}
+                        {proc.unidadeExecutoraNome && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-0.5">
+                              Unidade executante
+                            </label>
+                            <p className="px-2 py-1 text-[11px] bg-gray-50 border border-gray-200 rounded text-gray-800">
+                              {proc.unidadeExecutoraNome}
+                            </p>
+                          </div>
+                        )}
 
-                                  if (!unidade || !unidade.unidade) return null;
+                        <div>
+                          <label
+                            htmlFor={`data-${proc.execucaoId}`}
+                            className="block text-xs font-medium text-gray-700 mb-0.5"
+                          >
+                            Data de Execução <span className="text-red-500">*</span>
+                            {proc.dataAgendamento && (
+                              <span className="text-blue-600 font-normal ml-1">(data do agendamento)</span>
+                            )}
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                              type="date"
+                              id={`data-${proc.execucaoId}`}
+                              value={proc.dataExecucao}
+                              onChange={(e) => handleDataChange(index, e.target.value)}
+                              className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              disabled={submitting}
+                              required
+                              min={proc.dataAgendamento || undefined}
+                              max={hoje}
+                            />
+                          </div>
+                        </div>
 
-                                  const label = unidade.unidade.cnes
-                                    ? `${unidade.unidade.cnes} - ${unidade.unidade.nome || unidade.unidade.id}`
-                                    : (unidade.unidade.nome || unidade.unidade.id);
-
-                                  return {
-                                    value: unidadeId as string,
-                                    label: label
-                                  };
-                                }).filter((u): u is { label: string, value: string } => u !== null)}
-                                value={proc.unidadeExecutoraId}
-                                onChange={(val) => {
-                                  const novos = [...procedimentos];
-                                  novos[index].unidadeExecutoraId = val;
-
-                                  const unidade = profissionais
-                                    .flatMap(p => p.unidades || [])
-                                    .find(u => u.unidade?.id === val);
-
-                                  if (unidade && unidade.unidade) {
-                                    const nome = unidade.unidade.nome || unidade.unidade.id;
-                                    const cnes = unidade.unidade.cnes;
-                                    novos[index].unidadeExecutoraNome = cnes ? `${cnes} - ${nome}` : nome;
-                                  } else {
-                                    novos[index].unidadeExecutoraNome = '';
-                                  }
-                                  // Limpa o médico executante ao trocar a unidade
-                                  novos[index].medicoExecutante = '';
-                                  novos[index].medicoExecutanteId = ''; // Garantir limpeza do ID também se houver campo
-                                  setProcedimentos(novos);
-                                }}
-                                placeholder="Selecione a unidade..."
-                                emptyMessage="Nenhuma unidade encontrada"
-                                disabled={submitting}
-                              />
-                            </div>
-                          )}
-                          {/* Unidade executante (vinda do agendamento ou já definida) */}
-                          {proc.unidadeExecutoraNome && (
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-0.5">
-                                Unidade executante
-                              </label>
-                              <p className="px-2 py-1 text-[11px] bg-gray-50 border border-gray-200 rounded text-gray-800">
-                                {proc.unidadeExecutoraNome}
-                              </p>
-                            </div>
-                          )}
-
+                        {proc.ehConsultaEspecializada && (
                           <div>
                             <label
-                              htmlFor={`data-${proc.execucaoId}`}
+                              htmlFor={`medico-${proc.execucaoId}`}
                               className="block text-xs font-medium text-gray-700 mb-0.5"
                             >
-                              Data de Execução <span className="text-red-500">*</span>
-                              {proc.dataAgendamento && (
-                                <span className="text-blue-600 font-normal ml-1">(data do agendamento)</span>
-                              )}
+                              Médico executante <span className="text-red-500">*</span>
                             </label>
-                            <div className="relative">
-                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-                              <input
-                                type="date"
-                                id={`data-${proc.execucaoId}`}
-                                value={proc.dataExecucao}
-                                onChange={(e) => handleDataChange(index, e.target.value)}
-                                className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                disabled={submitting}
-                                required
-                                min={proc.dataAgendamento || undefined}
-                                max={hoje}
-                              />
-                            </div>
-                          </div>
-
-                          {proc.ehConsultaEspecializada && (
-                            <div>
-                              <label
-                                htmlFor={`medico-${proc.execucaoId}`}
-                                className="block text-xs font-medium text-gray-700 mb-0.5"
-                              >
-                                Médico executante <span className="text-red-500">*</span>
-                              </label>
-                              {(() => {
-                                const profissionaisDaUnidade = getProfissionaisDaUnidade(proc.unidadeExecutoraId)
-                                if (profissionaisDaUnidade.length > 0) {
-                                  return (
-                                    <SearchableSelect
-                                      options={profissionaisDaUnidade
-                                        .map(p => ({
-                                          value: p.id,
-                                          label: p.nome + (p.cboRelacao?.codigo
-                                            ? ` (${p.cboRelacao.codigo} - ${p.cboRelacao.descricao})`
-                                            : (p.cbo ? ` (${p.cbo})` : ''))
-                                        }))}
-                                      value={proc.medicoExecutanteId} // Use medicoExecutanteId for the ID
-                                      onChange={(val) => {
-                                        const novos = [...procedimentos];
-                                        novos[index].medicoExecutanteId = val;
-                                        const prof = profissionaisDaUnidade.find((p) => p.id === val);
-                                        novos[index].medicoExecutante = prof ? prof.nome : ''; // Store name for display/legacy
-                                        setProcedimentos(novos);
-                                      }}
-                                      placeholder="Selecione o médico..."
-                                      emptyMessage="Nenhum médico encontrado"
-                                      disabled={submitting || carregandoProfissionais}
-                                    />
-                                  )
-                                }
-
-                                // Fallback: sem profissionais vinculados à unidade, permitir digitação livre
-                                return (
-                                  <input
-                                    type="text"
-                                    id={`medico-${proc.execucaoId}`}
-                                    value={proc.medicoExecutante}
-                                    onChange={(e) => handleMedicoExecutanteChange(index, e.target.value)}
-                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                    disabled={submitting}
-                                    placeholder="Informe o médico que executou a consulta/teleconsulta"
-                                  />
+                            {(() => {
+                              const profissionaisDaUnidade = getProfissionaisDaUnidade(proc.unidadeExecutoraId)
+                              if (profissionaisDaUnidade.length > 0) {
+                                const selecionado = profissionaisDaUnidade.find(
+                                  (p) => p.nome === proc.medicoExecutante
                                 )
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                                const valorSelect = selecionado ? selecionado.id : ''
+                                return (
+                                  <select
+                                    id={`medico-${proc.execucaoId}`}
+                                    value={valorSelect}
+                                    onChange={(e) => {
+                                      const prof = profissionaisDaUnidade.find((p) => p.id === e.target.value)
+                                      handleMedicoExecutanteChange(index, prof ? prof.nome : '')
+                                    }}
+                                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    disabled={submitting || carregandoProfissionais}
+                                  >
+                                    <option value="">Selecione o médico executante</option>
+                                    {profissionaisDaUnidade.map((p) => {
+                                      const cboLabel = p.cboRelacao?.codigo
+                                        ? `${p.cboRelacao.codigo} - ${p.cboRelacao.descricao}`
+                                        : ''
+                                      return (
+                                        <option key={p.id} value={p.id}>
+                                          {p.nome}{cboLabel ? ` (${cboLabel})` : ''}
+                                        </option>
+                                      )
+                                    })}
+                                  </select>
+                                )
+                              }
 
-                    {/* Status Visual e Ações */}
-                    <div className="text-right flex items-center gap-2 flex-wrap justify-end">
-                      {(() => {
-                        const execucao = execucoesParaStatus.find((e) => e.id === proc.execucaoId)
-                        const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
-                        if (statusExibicao === 'REALIZADO' || proc.realizado) {
-                          return (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-0.5">
-                              <CheckCircle size={10} />
-                              REALIZADO
-                            </span>
-                          )
-                        }
-                        if (statusExibicao === 'DISPENSADO') {
-                          return (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-slate-100 text-slate-600" title="Dispensado: outra consulta/teleconsulta já foi realizada">
-                              DISPENSADO
-                            </span>
-                          )
-                        }
-                        if (proc.status === 'AGENDADO') {
-                          return (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
-                              <Calendar size={10} />
-                              AGENDADO
-                            </span>
-                          )
-                        }
-                        if (proc.status === 'CANCELADO') {
-                          return (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-800">
-                              Cancelado
-                            </span>
-                          )
-                        }
+                              // Fallback: sem profissionais vinculados à unidade, permitir digitação livre
+                              return (
+                                <input
+                                  type="text"
+                                  id={`medico-${proc.execucaoId}`}
+                                  value={proc.medicoExecutante}
+                                  onChange={(e) => handleMedicoExecutanteChange(index, e.target.value)}
+                                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                  disabled={submitting}
+                                  placeholder="Informe o médico que executou a consulta/teleconsulta"
+                                />
+                              )
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status Visual e Ações */}
+                  <div className="text-right flex items-center gap-2 flex-wrap justify-end">
+                    {(() => {
+                      const execucao = execucoesParaStatus.find((e) => e.id === proc.execucaoId)
+                      const statusExibicao = execucao ? getStatusExibicao(execucao, execucoesParaStatus) : proc.status
+                      if (statusExibicao === 'REALIZADO' || proc.realizado) {
                         return (
-                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-gray-100 text-gray-800">
-                            PENDENTE
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-0.5">
+                            <CheckCircle size={10} />
+                            REALIZADO
                           </span>
                         )
-                      })()}
-                      {/* Botão para remover data de realização (apenas admin, apenas se realizado) */}
-                      {isAdmin && proc.realizado && (
-                        <button
-                          type="button"
-                          onClick={() => handleExcluirExecucao(proc.execucaoId, index)}
-                          disabled={submitting || excluindo === proc.execucaoId}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Remover data de realização"
-                        >
-                          {excluindo === proc.execucaoId ? (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
-                          ) : (
-                            <Trash2 size={14} />
-                          )}
-                        </button>
-                      )}
-                      {/* Modal de confirmação com justificativa */}
-                      <ConfirmJustificativaModal
-                        open={!!confirmJustificativa}
-                        onCancel={() => setConfirmJustificativa(null)}
-                        onConfirm={confirmarExclusao}
-                        title={confirmJustificativa?.tipo === 'remover' ? 'Remover data de realização' : 'Confirmação'}
-                        descricao="Informe a justificativa para esta ação."
-                      />
-                    </div>
+                      }
+                      if (statusExibicao === 'DISPENSADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-slate-100 text-slate-600" title="Dispensado: outra consulta/teleconsulta já foi realizada">
+                            DISPENSADO
+                          </span>
+                        )
+                      }
+                      if (proc.status === 'AGENDADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
+                            <Calendar size={10} />
+                            AGENDADO
+                          </span>
+                        )
+                      }
+                      if (proc.status === 'CANCELADO') {
+                        return (
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-800">
+                            Cancelado
+                          </span>
+                        )
+                      }
+                      return (
+                        <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-gray-100 text-gray-800">
+                          PENDENTE
+                        </span>
+                      )
+                    })()}
+                    {/* Botão para remover data de realização (apenas admin, apenas se realizado) */}
+                    {isAdmin && proc.realizado && (
+                      <button
+                        type="button"
+                        onClick={() => handleExcluirExecucao(proc.execucaoId, index)}
+                        disabled={submitting || excluindo === proc.execucaoId}
+                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Remover data de realização"
+                      >
+                        {excluindo === proc.execucaoId ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </button>
+                    )}
+                        {/* Modal de confirmação com justificativa */}
+                        <ConfirmJustificativaModal
+                          open={!!confirmJustificativa}
+                          onCancel={() => setConfirmJustificativa(null)}
+                          onConfirm={confirmarExclusao}
+                          title={confirmJustificativa?.tipo === 'remover' ? 'Remover data de realização' : 'Confirmação'}
+                          descricao="Informe a justificativa para esta ação."
+                        />
                   </div>
                 </div>
-              )
-            })}
+              </div>
+            )})}
           </div>
 
           {/* Parte inferior do modal: apenas ações (resultados de biópsia ficam logo abaixo de cada procedimento acima) */}
