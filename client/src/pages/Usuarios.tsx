@@ -202,6 +202,17 @@ export default function Usuarios() {
     }
   }
 
+  const handleDesbloquear = async (u: Usuario) => {
+    if (!window.confirm(`Deseja desbloquear o usuário ${u.nome}?`)) return
+
+    try {
+      await api.post(`/usuarios/${u.id}/desbloquear`)
+      carregarUsuarios()
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Erro ao desbloquear usuário.')
+    }
+  }
+
   const handleExcluir = async (id: string) => {
     if (id === usuarioLogado?.id) {
       alert('Não é possível excluir o próprio usuário.')
