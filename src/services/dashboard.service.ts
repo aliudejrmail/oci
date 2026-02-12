@@ -4,7 +4,7 @@ import { dataFimCompetencia, dataLimiteRegistroOncologico, calcularDecimoDiaUtil
 import { isProcedimentoAnatomoPatologico, obrigatoriosSatisfeitos, type ProcedimentoObrigatorio, type ExecucaoParaValidacao } from '../utils/validacao-apac.utils';
 
 export class DashboardService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async obterEstatisticas(periodo?: { inicio: Date; fim: Date }) {
     const where: any = { deletedAt: null };
@@ -140,6 +140,7 @@ export class DashboardService {
       const alertas = await this.prisma.alertaPrazo.findMany({
         where: {
           solicitacao: {
+            deletedAt: null,
             status: {
               notIn: [StatusSolicitacao.CONCLUIDA, StatusSolicitacao.CANCELADA]
             }
@@ -230,6 +231,7 @@ export class DashboardService {
           status: { not: STATUS_EXECUCAO.REALIZADO },
           procedimento: { obrigatorio: true },
           solicitacao: {
+            deletedAt: null,
             status: {
               notIn: [StatusSolicitacao.CONCLUIDA, StatusSolicitacao.CANCELADA]
             }
@@ -286,6 +288,7 @@ export class DashboardService {
 
     return await this.prisma.solicitacaoOci.findMany({
       where: {
+        deletedAt: null,
         dataPrazo: {
           gte: hoje,
           lte: proximosDias
@@ -326,6 +329,7 @@ export class DashboardService {
 
       const solicitacoes = await this.prisma.solicitacaoOci.findMany({
         where: {
+          deletedAt: null,
           dataSolicitacao: {
             gte: inicio
           }
@@ -381,6 +385,7 @@ export class DashboardService {
       // Buscar solicitações com APAC autorizada e competência fim definida
       const solicitacoesComApac = await this.prisma.solicitacaoOci.findMany({
         where: {
+          deletedAt: null,
           numeroAutorizacaoApac: { not: null },
           competenciaFimApac: { not: null },
           status: {
@@ -453,6 +458,7 @@ export class DashboardService {
       // 3. Estão em andamento (não concluídas nem canceladas)
       const solicitacoes = await this.prisma.solicitacaoOci.findMany({
         where: {
+          deletedAt: null,
           dataInicioValidadeApac: { not: null },
           competenciaFimApac: { not: null },
           status: {
@@ -505,7 +511,7 @@ export class DashboardService {
         .map((sol) => {
           try {
             if (!sol.competenciaFimApac) return null;
-            
+
             // Verificar se ainda há procedimentos obrigatórios pendentes usando a função que trata grupo consulta/teleconsulta
             const procedimentosObrigatorios = sol.oci?.procedimentos || [];
             if (procedimentosObrigatorios.length > 0) {
@@ -581,6 +587,7 @@ export class DashboardService {
       // APACs pendentes: EM_ANDAMENTO sem numeroAutorizacaoApac
       const apacsPendentes = await this.prisma.solicitacaoOci.findMany({
         where: {
+          deletedAt: null,
           status: StatusSolicitacao.EM_ANDAMENTO,
           numeroAutorizacaoApac: null,
           dataConclusao: null
@@ -609,6 +616,7 @@ export class DashboardService {
       // Solicitações registradas recentemente (últimos 7 dias)
       const solicitacoesRecentes = await this.prisma.solicitacaoOci.findMany({
         where: {
+          deletedAt: null,
           dataSolicitacao: { gte: seteDiasAtras },
           status: {
             in: [StatusSolicitacao.PENDENTE, StatusSolicitacao.EM_ANDAMENTO]

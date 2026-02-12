@@ -160,6 +160,10 @@ export class SolicitacoesService {
       }
     });
 
+    if (!solicitacao || solicitacao.deletedAt) {
+      return null;
+    }
+
     // Adicionar prazos APAC quando houver competências (2 competências - Portaria 1640/2024)
     // Oncológico: primeiro critério 30 dias desde a consulta; considera-se também 2 competências
     // diasRestantes SEMPRE em relação ao REGISTRO de procedimentos (dataFimValidadeApac), nunca à apresentação APAC
@@ -315,7 +319,7 @@ export class SolicitacoesService {
       const limit = filtros.limit || 20;
       const skip = (page - 1) * limit;
 
-      const where: any = {};
+      const where: any = { deletedAt: null };
 
       // Filtro por execuções: executante (perfil EXECUTANTE) e/ou unidade executante (agendamentos na unidade)
       const execucoesFilter: any = {};
@@ -888,6 +892,7 @@ export class SolicitacoesService {
 
     const vencidas = await this.prisma.solicitacaoOci.findMany({
       where: {
+        deletedAt: null,
         dataPrazo: { lt: hoje },
         status: {
           notIn: [StatusSolicitacao.CONCLUIDA, StatusSolicitacao.CANCELADA, StatusSolicitacao.VENCIDA]
@@ -944,12 +949,13 @@ export class SolicitacoesService {
       );
     }
 
-    // Excluir em cascata: anexos, execuções, alerta serão removidos automaticamente
-    await this.prisma.solicitacaoOci.delete({
-      where: { id }
+    // Exclusão lógica (Soft Delete) para manter histórico/auditoria
+    await this.prisma.solicitacaoOci.update({
+      where: { id },
+      data: { deletedAt: new Date() }
     });
 
-    return { message: 'Solicitação excluída com sucesso' };
+    return { message: 'Solicitação excluída com sucesso (arquivada)' };
   }
 
   async atualizarAutorizacaoApac(
