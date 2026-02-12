@@ -50,7 +50,7 @@ export default function SolicitacaoDetalhes() {
           })
           setUnidadesMap(map)
         })
-        .catch(() => {})
+        .catch(() => { })
     }
   }, [solicitacao?.execucoes])
 
@@ -162,12 +162,12 @@ export default function SolicitacaoDetalhes() {
       const response = await api.get(`/solicitacoes/${id}/anexos/${anexoId}/download`, {
         responseType: 'blob'
       })
-      
+
       // Criar blob URL e abrir em nova aba
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       window.open(url, '_blank')
-      
+
       // Limpar URL após 10 minutos para liberar memória
       setTimeout(() => {
         window.URL.revokeObjectURL(url)
@@ -183,7 +183,7 @@ export default function SolicitacaoDetalhes() {
       const response = await api.get(`/solicitacoes/${id}/anexos/${anexoId}/download`, {
         responseType: 'blob'
       })
-      
+
       // Criar blob e fazer download
       const blob = new Blob([response.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
@@ -269,21 +269,24 @@ export default function SolicitacaoDetalhes() {
             <p className="text-xs text-gray-600 mt-0.5">Detalhes da solicitação</p>
           </div>
           {alerta && (
-            <div className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${
-              alerta.nivelAlerta === 'CRITICO' 
+            <div className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 ${alerta.nivelAlerta === 'CRITICO'
                 ? 'bg-red-50 text-red-700'
                 : alerta.nivelAlerta === 'ATENCAO'
-                ? 'bg-orange-50 text-orange-700'
-                : 'bg-blue-50 text-blue-700'
-            }`}>
+                  ? 'bg-orange-50 text-orange-700'
+                  : 'bg-blue-50 text-blue-700'
+              }`}>
               <AlertTriangle size={14} />
               <span className="font-medium text-xs">
-                {alerta.diasRestantes < 0 
+                {alerta.diasRestantes < 0
                   ? `${Math.abs(alerta.diasRestantes)} dias vencido(s)`
                   : `${alerta.diasRestantes} dia(s) restante(s)`
                 }
-                {solicitacao.dataFimValidadeApac && (
-                  <span className="opacity-90 ml-0.5">(registro proc.)</span>
+                {alerta.tipoPrazo ? (
+                  <span className="opacity-90 ml-0.5">({alerta.tipoPrazo === 'Data limite registro procedimentos' ? 'registro proc.' : 'registro APAC'})</span>
+                ) : (
+                  solicitacao.dataFimValidadeApac && (
+                    <span className="opacity-90 ml-0.5">(registro proc.)</span>
+                  )
                 )}
               </span>
             </div>
@@ -325,7 +328,7 @@ export default function SolicitacaoDetalhes() {
           <div>
             <h3 className="text-xs font-medium text-gray-500 mb-0.5">Dt. Autorização APAC</h3>
             <p className="text-sm font-medium text-gray-900">
-              {solicitacao.dataAutorizacaoApac 
+              {solicitacao.dataAutorizacaoApac
                 ? formatarDataSemTimezone(solicitacao.dataAutorizacaoApac)
                 : <span className="text-gray-400 italic text-xs">Não informado</span>
               }
@@ -340,7 +343,8 @@ export default function SolicitacaoDetalhes() {
                 </p>
                 {alerta && (
                   <p className={`text-xs ${alerta.diasRestantes < 0 ? 'text-red-600 font-medium' : 'text-orange-600'}`}>
-                    {alerta.diasRestantes < 0 ? `${Math.abs(alerta.diasRestantes)}d venc.` : `${alerta.diasRestantes}d rest.`} (registro)
+                    {alerta.diasRestantes < 0 ? `${Math.abs(alerta.diasRestantes)}d venc.` : `${alerta.diasRestantes}d rest.`}
+                    {alerta.tipoPrazo ? (alerta.tipoPrazo === 'Data limite registro procedimentos' ? ' (registro)' : ' (APAC)') : ' (registro)'}
                   </p>
                 )}
                 {solicitacao.prazoApresentacaoApac && (
@@ -413,14 +417,14 @@ export default function SolicitacaoDetalhes() {
               </div>
               <div>
                 <span className="text-orange-600 font-medium">Data limite para registro de procedimentos:</span>{' '}
-                {solicitacao.dataFimValidadeApac 
+                {solicitacao.dataFimValidadeApac
                   ? formatarDataSemTimezone(solicitacao.dataFimValidadeApac)
                   : (() => {
-                      const ano = parseInt(solicitacao.competenciaFimApac.slice(0, 4), 10)
-                      const mes = parseInt(solicitacao.competenciaFimApac.slice(4, 6), 10)
-                      const ultimoDia = new Date(ano, mes, 0)
-                      return formatarDataSemTimezone(ultimoDia)
-                    })()
+                    const ano = parseInt(solicitacao.competenciaFimApac.slice(0, 4), 10)
+                    const mes = parseInt(solicitacao.competenciaFimApac.slice(4, 6), 10)
+                    const ultimoDia = new Date(ano, mes, 0)
+                    return formatarDataSemTimezone(ultimoDia)
+                  })()
                 }
                 <span className="text-amber-600 ml-1">
                   {solicitacao.oci?.tipo === 'ONCOLOGICO'
@@ -430,7 +434,7 @@ export default function SolicitacaoDetalhes() {
               </div>
               <div>
                 <span className="text-purple-600 font-medium">Prazo de apresentação APAC:</span>{' '}
-                {solicitacao.prazoApresentacaoApac 
+                {solicitacao.prazoApresentacaoApac
                   ? formatarDataSemTimezone(solicitacao.prazoApresentacaoApac)
                   : '-'
                 }
@@ -513,7 +517,7 @@ export default function SolicitacaoDetalhes() {
               Editar
             </button>
           )}
-          
+
           {/* Registrar APAC: apenas ADMIN e Autorizador */}
           {(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'AUTORIZADOR') && (
             <button
@@ -541,14 +545,14 @@ export default function SolicitacaoDetalhes() {
                     <>
                       {(usuario?.tipo !== 'EXECUTANTE' ||
                         (solicitacao.execucoes?.some((e: any) => e.status === 'AGENDADO') ?? false)) && (
-                        <button
-                          onClick={() => setModalAgendarAberto(true)}
-                          className="px-2.5 py-1.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 flex items-center gap-1.5"
-                        >
-                          <Calendar size={14} />
-                          {usuario?.tipo === 'EXECUTANTE' ? 'Reagendar' : 'Agendar'}
-                        </button>
-                      )}
+                          <button
+                            onClick={() => setModalAgendarAberto(true)}
+                            className="px-2.5 py-1.5 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 flex items-center gap-1.5"
+                          >
+                            <Calendar size={14} />
+                            {usuario?.tipo === 'EXECUTANTE' ? 'Reagendar' : 'Agendar'}
+                          </button>
+                        )}
                       <button
                         onClick={async () => {
                           const data = await carregarSolicitacao()
@@ -617,7 +621,7 @@ export default function SolicitacaoDetalhes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
             {solicitacao.anexos.map((anexo: any) => {
               const tamanhoKB = (anexo.tamanhoBytes / 1024).toFixed(1)
-              
+
               return (
                 <div key={anexo.id} className="border border-gray-200 rounded-lg p-2 hover:shadow-md transition-shadow">
                   <div className="flex items-start gap-2">
@@ -680,93 +684,93 @@ export default function SolicitacaoDetalhes() {
           ) ?? []).length === 0 && usuario?.tipo === 'EXECUTANTE' ? (
             <p className="text-sm text-gray-500 py-3">Nenhum procedimento agendado para esta unidade no momento.</p>
           ) : (
-          (usuario?.tipo === 'EXECUTANTE'
-            ? solicitacao.execucoes?.filter((e: any) => e.status === 'AGENDADO')
-            : solicitacao.execucoes
-          )?.map((execucao: any, index: number) => {
-            const statusExibicao = getStatusExibicao(execucao, solicitacao.execucoes ?? [])
-            return (
-            <div key={execucao.id} className="border border-gray-200 rounded-lg p-2">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 rounded-full font-medium text-xs">
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium text-xs text-gray-900 truncate" title={execucao.procedimento.nome}>{execucao.procedimento.nome}</p>
-                      <p className="text-xs text-gray-500">
-                        {execucao.procedimento.tipo} - {execucao.procedimento.codigo}
-                      </p>
-                    </div>
-                  </div>
-                  {execucao.observacoes && (
-                    <p className="text-xs text-gray-600 mt-1">{execucao.observacoes}</p>
-                  )}
-                </div>
-                <div className="text-right ml-2">
-                  <span
-                    className={`px-2 py-0.5 text-xs font-medium rounded-full flex items-center gap-1 ${
-                      statusExibicao === 'REALIZADO'
-                        ? 'bg-green-100 text-green-800'
-                        : statusExibicao === 'DISPENSADO'
-                        ? 'bg-slate-100 text-slate-600'
-                        : statusExibicao === 'AGENDADO'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                    title={statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
-                  >
-                    {statusExibicao === 'REALIZADO' && <CheckCircle size={10} />}
-                    {statusExibicao === 'REALIZADO'
-                      ? 'REALIZADO'
-                      : statusExibicao === 'DISPENSADO'
-                      ? 'DISPENSADO'
-                      : statusExibicao === 'PENDENTE - AGUARDANDO RESULTADO'
-                      ? 'Pendente – aguardando resultado'
-                      : statusExibicao}
-                  </span>
-                  {statusExibicao === 'REALIZADO' && (
-                    <p className="text-xs text-gray-600 mt-0.5 font-medium">
-                      {execucao.dataExecucao ? formatarDataSemTimezone(execucao.dataExecucao) : 'Data não informada'}
-                    </p>
-                  )}
-                  {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
-                    <div className="mt-0.5 flex flex-col items-end gap-1">
-                      <p className="text-xs text-blue-600">
-                        Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
-                        {(() => {
-                          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-                          const valor = execucao.unidadeExecutora?.trim()
-                          let nomeUnidade: string | null = null
-                          if (execucao.unidadeExecutoraRef) {
-                            nomeUnidade = `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
-                          } else if (valor && !uuidRegex.test(valor)) {
-                            nomeUnidade = valor
-                          } else if (valor && uuidRegex.test(valor) && unidadesMap[valor]) {
-                            nomeUnidade = unidadesMap[valor]
-                          }
-                          return nomeUnidade ? ` • ${nomeUnidade}` : ''
-                        })()}
-                      </p>
-                      {(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR') && (
-                        <button
-                          type="button"
-                          onClick={() => removerAgendamento(execucao.id)}
-                          disabled={removendoAgendamentoId === execucao.id}
-                          className="text-[10px] text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-0.5 disabled:opacity-50"
-                          title="Remover agendamento e voltar para Pendente"
-                        >
-                          <CalendarX2 size={12} />
-                          {removendoAgendamentoId === execucao.id ? 'Removendo...' : 'Remover agendamento'}
-                        </button>
+            (usuario?.tipo === 'EXECUTANTE'
+              ? solicitacao.execucoes?.filter((e: any) => e.status === 'AGENDADO')
+              : solicitacao.execucoes
+            )?.map((execucao: any, index: number) => {
+              const statusExibicao = getStatusExibicao(execucao, solicitacao.execucoes ?? [])
+              return (
+                <div key={execucao.id} className="border border-gray-200 rounded-lg p-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="flex items-center justify-center w-6 h-6 bg-primary-100 text-primary-700 rounded-full font-medium text-xs">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="font-medium text-xs text-gray-900 truncate" title={execucao.procedimento.nome}>{execucao.procedimento.nome}</p>
+                          <p className="text-xs text-gray-500">
+                            {execucao.procedimento.tipo} - {execucao.procedimento.codigo}
+                          </p>
+                        </div>
+                      </div>
+                      {execucao.observacoes && (
+                        <p className="text-xs text-gray-600 mt-1">{execucao.observacoes}</p>
                       )}
                     </div>
-                  )}
+                    <div className="text-right ml-2">
+                      <span
+                        className={`px-2 py-0.5 text-xs font-medium rounded-full flex items-center gap-1 ${statusExibicao === 'REALIZADO'
+                            ? 'bg-green-100 text-green-800'
+                            : statusExibicao === 'DISPENSADO'
+                              ? 'bg-slate-100 text-slate-600'
+                              : statusExibicao === 'AGENDADO'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}
+                        title={statusExibicao === 'DISPENSADO' ? 'Dispensado: outra consulta/teleconsulta já foi realizada' : undefined}
+                      >
+                        {statusExibicao === 'REALIZADO' && <CheckCircle size={10} />}
+                        {statusExibicao === 'REALIZADO'
+                          ? 'REALIZADO'
+                          : statusExibicao === 'DISPENSADO'
+                            ? 'DISPENSADO'
+                            : statusExibicao === 'PENDENTE - AGUARDANDO RESULTADO'
+                              ? 'Pendente – aguardando resultado'
+                              : statusExibicao}
+                      </span>
+                      {statusExibicao === 'REALIZADO' && (
+                        <p className="text-xs text-gray-600 mt-0.5 font-medium">
+                          {execucao.dataExecucao ? formatarDataSemTimezone(execucao.dataExecucao) : 'Data não informada'}
+                        </p>
+                      )}
+                      {execucao.status === 'AGENDADO' && execucao.dataAgendamento && (
+                        <div className="mt-0.5 flex flex-col items-end gap-1">
+                          <p className="text-xs text-blue-600">
+                            Agendado: {formatarDataHoraSemTimezone(execucao.dataAgendamento)}
+                            {(() => {
+                              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                              const valor = execucao.unidadeExecutora?.trim()
+                              let nomeUnidade: string | null = null
+                              if (execucao.unidadeExecutoraRef) {
+                                nomeUnidade = `${execucao.unidadeExecutoraRef.cnes} - ${execucao.unidadeExecutoraRef.nome}`
+                              } else if (valor && !uuidRegex.test(valor)) {
+                                nomeUnidade = valor
+                              } else if (valor && uuidRegex.test(valor) && unidadesMap[valor]) {
+                                nomeUnidade = unidadesMap[valor]
+                              }
+                              return nomeUnidade ? ` • ${nomeUnidade}` : ''
+                            })()}
+                          </p>
+                          {(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR') && (
+                            <button
+                              type="button"
+                              onClick={() => removerAgendamento(execucao.id)}
+                              disabled={removendoAgendamentoId === execucao.id}
+                              className="text-[10px] text-amber-600 hover:text-amber-700 hover:underline flex items-center gap-0.5 disabled:opacity-50"
+                              title="Remover agendamento e voltar para Pendente"
+                            >
+                              <CalendarX2 size={12} />
+                              {removendoAgendamentoId === execucao.id ? 'Removendo...' : 'Remover agendamento'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )})
+              )
+            })
           )}
         </div>
       </div>

@@ -181,11 +181,35 @@ export class SolicitacoesService {
         const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && solicitacao.dataInicioValidadeApac)
           ? dataLimiteRegistroOncologico(solicitacao.dataInicioValidadeApac, solicitacao.competenciaFimApac)
           : dataFimCompetencia(solicitacao.competenciaFimApac);
+
+        // Verificar se os procedimentos obrigatórios já estão satisfeitos
+        const procedimentosObrigatorios = (solicitacao.oci?.procedimentos || [])
+          .filter(p => p.obrigatorio)
+          .map(p => ({
+            id: p.id,
+            codigo: p.codigo || '',
+            nome: p.nome || ''
+          }));
+
+        const execucoesParaValidacao: ExecucaoParaValidacao[] = (solicitacao.execucoes || []).map((exec: any) => ({
+          status: exec.status,
+          procedimento: {
+            id: exec.procedimento.id,
+            codigo: exec.procedimento.codigo || '',
+            nome: exec.procedimento.nome || ''
+          }
+        }));
+
+        let tipoPrazo = 'Data limite registro procedimentos';
+        if (obrigatoriosSatisfeitos(procedimentosObrigatorios, execucoesParaValidacao)) {
+          tipoPrazo = 'Pendente registro de APAC';
+        }
+
         const diasRestantesRegistro = calcularDiasRestantes(dataFimValidadeApac);
         const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, solicitacao.oci?.tipo || 'GERAL');
         const alertaEnriquecido = solicitacao.alerta
-          ? { ...solicitacao.alerta, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro }
-          : { id: '', solicitacaoId: solicitacao.id, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, notificado: false };
+          ? { ...solicitacao.alerta, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, tipoPrazo }
+          : { id: '', solicitacaoId: solicitacao.id, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, notificado: false, tipoPrazo };
         return {
           ...solicitacao,
           prazoApresentacaoApac,
