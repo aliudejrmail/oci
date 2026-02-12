@@ -66,7 +66,8 @@ export class RelatoriosService {
       orderBy: { dataSolicitacao: 'desc' },
       include: {
         paciente: { select: { nome: true, cpf: true } },
-        oci: { select: { nome: true, codigo: true, tipo: true } }
+        oci: { select: { nome: true, codigo: true, tipo: true } },
+        medicoSolicitante: { select: { nome: true, cns: true } }
       }
     });
     const total = await this.prisma.solicitacaoOci.count({ where });

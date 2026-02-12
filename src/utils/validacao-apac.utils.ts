@@ -50,13 +50,13 @@ export function validarNumeroAutorizacaoApac(numero: string): { valido: boolean;
  */
 export function formatarNumeroAutorizacaoApac(numero: string): string {
   if (!numero) return '';
-  
+
   const numeroLimpo = numero.replace(/\D/g, '');
-  
+
   if (numeroLimpo.length === 13) {
     return `${numeroLimpo.substring(0, 4)}${numeroLimpo.charAt(4)}-${numeroLimpo.substring(5)}`;
   }
-  
+
   return numero;
 }
 
@@ -70,7 +70,7 @@ export function validarMotivoSaida(motivo: string | null | undefined): { valido:
   }
 
   const motivosPermitidos = ['1.1', '1.2', '1.4', '1.5', '4.1', '4.2', '4.3'];
-  
+
   if (!motivosPermitidos.includes(motivo)) {
     return {
       valido: false,
@@ -128,17 +128,17 @@ export function validarProcedimentosObrigatoriosOci(
   procedimentosObrigatorios: ProcedimentoObrigatorio[],
   execucoes: ExecucaoParaValidacao[]
 ): { valido: boolean; erro?: string } {
-  // Considerar REALIZADO e AGUARDANDO_RESULTADO como válidos para anatomo-patológicos
+  // Considerar REALIZADO, DISPENSADO e AGUARDANDO_RESULTADO como válidos para anatomo-patológicos
   const execucoesValidas = execucoes.filter((e) => {
-    if (e.status === STATUS_EXECUCAO.REALIZADO) return true;
+    if (e.status === STATUS_EXECUCAO.REALIZADO || e.status === STATUS_EXECUCAO.DISPENSADO) return true;
     // AGUARDANDO_RESULTADO também é considerado válido para anatomo-patológicos
-    if (e.status === STATUS_EXECUCAO.AGUARDANDO_RESULTADO && 
-        isProcedimentoAnatomoPatologico(e.procedimento.nome)) {
+    if (e.status === STATUS_EXECUCAO.AGUARDANDO_RESULTADO &&
+      isProcedimentoAnatomoPatologico(e.procedimento.nome)) {
       return true;
     }
     return false;
   });
-  
+
   const idsExecutados = new Set(execucoesValidas.map((e) => e.procedimento.id));
 
   const grupoConsulta = procedimentosObrigatorios.filter((p) =>

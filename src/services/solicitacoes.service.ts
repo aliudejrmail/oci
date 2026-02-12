@@ -156,6 +156,13 @@ export class SolicitacoesService {
         alerta: true,
         anexos: {
           orderBy: { createdAt: 'desc' }
+        },
+        medicoSolicitante: {
+          select: {
+            id: true,
+            nome: true,
+            cns: true
+          }
         }
       }
     });
@@ -394,7 +401,13 @@ export class SolicitacoesService {
                 tipo: true
               }
             },
-            alerta: true
+            alerta: true,
+            medicoSolicitante: {
+              select: {
+                id: true,
+                nome: true
+              }
+            }
           },
           orderBy: { dataSolicitacao: 'desc' },
           skip,

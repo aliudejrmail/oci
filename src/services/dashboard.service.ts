@@ -161,7 +161,20 @@ export class DashboardService {
                   id: true,
                   codigo: true,
                   nome: true,
-                  tipo: true
+                  tipo: true,
+                  procedimentos: {
+                    where: { obrigatorio: true },
+                    select: { id: true, codigo: true, nome: true }
+                  }
+                }
+              },
+              execucoes: {
+                select: {
+                  id: true,
+                  status: true,
+                  procedimento: {
+                    select: { id: true, codigo: true, nome: true }
+                  }
                 }
               }
             }
@@ -190,6 +203,22 @@ export class DashboardService {
             : dataFimCompetencia(sol.competenciaFimApac);
           prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(sol.competenciaFimApac);
           tipoPrazo = 'Data limite registro procedimentos';
+
+          // Verificar se os procedimentos obrigatórios já estão satisfeitos
+          const procedimentosObrigatorios = sol.oci?.procedimentos || [];
+          const execucoesParaValidacao: ExecucaoParaValidacao[] = (sol.execucoes || []).map((exec: any) => ({
+            status: exec.status,
+            procedimento: {
+              id: exec.procedimento.id,
+              codigo: exec.procedimento.codigo || '',
+              nome: exec.procedimento.nome || ''
+            }
+          }));
+
+          if (obrigatoriosSatisfeitos(procedimentosObrigatorios, execucoesParaValidacao)) {
+            tipoPrazo = 'Pendente registro de APAC';
+          }
+
           // Dias restantes: SEMPRE em relação ao REGISTRO/REALIZAÇÃO de procedimentos (ex: 31/01), NUNCA à apresentação APAC (5º dia útil)
           diasRestantesExibir = calcularDiasRestantes(dataFimValidadeApac);
           // Recalcular nivelAlerta com base nos dias até o registro de procedimentos
