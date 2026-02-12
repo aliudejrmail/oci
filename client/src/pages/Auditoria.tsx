@@ -9,7 +9,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Eye,
-    Info
+    Info,
+    X
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -231,9 +232,9 @@ export default function Auditoria() {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${log.acao.includes('FAIL') ? 'bg-red-50 text-red-600 border border-red-100' :
-                                                log.acao.includes('CRIACAO') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                                    log.acao.includes('EXCLUSAO') ? 'bg-orange-50 text-orange-600 border border-orange-100' :
-                                                        'bg-blue-50 text-blue-600 border border-blue-100'
+                                            log.acao.includes('CRIACAO') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                                log.acao.includes('EXCLUSAO') ? 'bg-orange-50 text-orange-600 border border-orange-100' :
+                                                    'bg-blue-50 text-blue-600 border border-blue-100'
                                             }`}>
                                             {log.acao}
                                         </span>
