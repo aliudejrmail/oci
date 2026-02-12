@@ -59,6 +59,7 @@ model Usuario {
   solicitacoesCriadas     SolicitacaoOci[]     @relation("CriadoPor")
   solicitacoesAtualizadas SolicitacaoOci[]     @relation("AtualizadoPor")
   execucoesAgendadas     ExecucaoProcedimento[] @relation("Executante")
+  auditorias              Auditoria[]
   unidade                UnidadeSaude?         @relation("Unidade", fields: [unidadeId], references: [id], onDelete: SetNull)
   unidadeExecutante      UnidadeSaude?         @relation("UnidadeExecutante", fields: [unidadeExecutanteId], references: [id], onDelete: SetNull)
 
@@ -421,4 +422,24 @@ model AlertaPrazo {
   @@index([nivelAlerta])
   @@index([notificado])
   @@map("alertas_prazos")
+}
+
+model Auditoria {
+  id        String   @id @default(uuid())
+  usuarioId String?
+  acao      String   // Ex: LOGIN, CRIACAO_SOLICITACAO, ALTERACAO_STATUS, EXCLUSAO
+  entidade  String   // Ex: SolicitacaoOci, Paciente, Usuario
+  entidadeId String?
+  detalhes  String?  // JSON ou texto descrevendo a mudança
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([entidade, entidadeId])
+  @@index([createdAt])
+  @@map("auditoria")
 }

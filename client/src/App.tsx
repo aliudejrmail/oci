@@ -11,6 +11,7 @@ import UnidadesExecutantes from './pages/UnidadesExecutantes'
 import Usuarios from './pages/Usuarios'
 import Relatorios from './pages/Relatorios'
 import ImportarSigtap from './pages/ImportarSigtap'
+import Auditoria from './pages/Auditoria'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -74,6 +75,11 @@ function App() {
             <Route path="usuarios" element={
               <ProtectedRoute roles={['ADMIN', 'GESTOR']}>
                 <Usuarios />
+              </ProtectedRoute>
+            } />
+            <Route path="auditoria" element={
+              <ProtectedRoute roles={['ADMIN']}>
+                <Auditoria />
               </ProtectedRoute>
             } />
           </Route>

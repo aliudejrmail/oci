@@ -6,8 +6,10 @@ import rateLimit from 'express-rate-limit';
 import { prisma } from '../database/prisma';
 import { getJwtSecret } from '../utils/env';
 import { authenticate } from '../middleware/auth.middleware';
+import { AuditoriaService } from '../services/auditoria.service';
 
 const router = Router();
+const auditoria = new AuditoriaService(prisma);
 
 const TIPOS_PERMITIDOS = ['ADMIN', 'GESTOR', 'ATENDENTE', 'EXECUTANTE', 'AUTORIZADOR', 'SOLICITANTE'];
 
@@ -88,6 +90,21 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
         data: updateData
       });
 
+      // Audit: LOGIN_FAIL
+      await auditoria.log({
+        usuarioId: usuario.id,
+        acao: 'LOGIN_FAIL',
+        entidade: 'Usuario',
+        entidadeId: usuario.id,
+        detalhes: JSON.stringify({
+          email,
+          tentativa: tentativas,
+          bloqueado: tentativas >= 5
+        }),
+        ip: req.ip,
+        userAgent: req.get('user-agent')
+      });
+
       if (tentativas >= 5) {
         return res.status(403).json({
           message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
@@ -108,6 +125,16 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
         bloqueadoEm: null,
         ultimoAcesso: new Date()
       }
+    });
+
+    // Audit: LOGIN_SUCCESS
+    await auditoria.log({
+      usuarioId: usuario.id,
+      acao: 'LOGIN_SUCCESS',
+      entidade: 'Usuario',
+      entidadeId: usuario.id,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
     });
 
     const secret = getJwtSecret();

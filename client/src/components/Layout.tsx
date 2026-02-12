@@ -12,6 +12,7 @@ import {
   Building2,
   BarChart3,
   FileArchive,
+  History as HistoryIcon,
   Menu,
   X
 } from 'lucide-react'
@@ -69,6 +70,7 @@ export default function Layout() {
           : [
             ...menuCompleto,
             ...(usuario?.tipo === 'ADMIN' ? [{ path: '/importar-sigtap', label: 'Importar SIGTAP', icon: FileArchive }] : []),
+            ...(usuario?.tipo === 'ADMIN' ? [{ path: '/auditoria', label: 'Histórico e Auditoria', icon: HistoryIcon }] : []),
             ...(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR' ? [{ path: '/usuarios', label: 'Usuários e Perfis', icon: UserCog }] : [])
           ]
 
@@ -129,8 +131,8 @@ export default function Layout() {
                 to={item.path}
                 onClick={fecharSidebar}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-1.5 transition-all duration-200 group ${isActive
-                    ? 'bg-primary-50 text-primary-700 shadow-sm shadow-primary-100/50'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-primary-50 text-primary-700 shadow-sm shadow-primary-100/50'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
               >
                 <div className={`p-1.5 rounded-lg transition-colors ${isActive ? 'bg-primary-100 text-primary-700' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'

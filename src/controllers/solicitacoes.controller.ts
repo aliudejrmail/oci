@@ -6,6 +6,9 @@ import { SolicitacoesService } from '../services/solicitacoes.service';
 import { prisma } from '../database/prisma';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { validarNumeroAutorizacaoApac } from '../utils/validacao-apac.utils';
+import { AuditoriaService } from '../services/auditoria.service';
+
+const auditoria = new AuditoriaService(prisma);
 
 export class SolicitacoesController {
   private getService(): SolicitacoesService {
@@ -211,7 +214,8 @@ export class SolicitacoesController {
         observacoes,
         unidadeOrigem: unidadeOrigemFinal,
         unidadeDestino,
-        ociId
+        ociId,
+        atualizadoPorId: req.userId!
       });
 
       return res.json(solicitacao);
@@ -317,6 +321,15 @@ export class SolicitacoesController {
           tamanhoBytes: f.size
         }))
       });
+      // Audit: UPLOAD_ANEXOS
+      await auditoria.log({
+        usuarioId: (req as AuthRequest).userId,
+        acao: 'UPLOAD_ANEXOS',
+        entidade: 'SolicitacaoOci',
+        entidadeId: solicitacaoId,
+        detalhes: JSON.stringify({ count: created.count, arquivos: files.map(f => f.originalname) })
+      });
+
       return res.status(201).json({
         message: `${created.count} anexo(s) salvo(s).`,
         count: created.count
@@ -330,7 +343,7 @@ export class SolicitacoesController {
     try {
       const service = this.getService();
       const { id } = req.params;
-      const resultado = await service.excluirSolicitacao(id);
+      const resultado = await service.excluirSolicitacao(id, req.userId!);
       return res.json(resultado);
     } catch (error: any) {
       return res.status(400).json({ message: error.message });
@@ -402,6 +415,16 @@ export class SolicitacoesController {
         fs.unlinkSync(caminhoCompleto);
       }
       await prisma.anexoSolicitacao.delete({ where: { id: anexoId } });
+
+      // Audit: EXCLUSAO_ANEXO
+      await auditoria.log({
+        usuarioId: req.userId,
+        acao: 'EXCLUSAO_ANEXO',
+        entidade: 'SolicitacaoOci',
+        entidadeId: solicitacaoId,
+        detalhes: JSON.stringify({ nomeOriginal: anexo.nomeOriginal })
+      });
+
       return res.json({ message: 'Anexo removido com sucesso.' });
     } catch (error: any) {
       console.error('Erro ao remover anexo:', error);

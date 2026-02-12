@@ -1,10 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { AuditoriaService } from './auditoria.service';
 
 const TIPOS_PERMITIDOS = ['ADMIN', 'GESTOR', 'ATENDENTE', 'EXECUTANTE', 'AUTORIZADOR', 'SOLICITANTE'];
 
 export class UsuariosService {
-  constructor(private prisma: PrismaClient) { }
+  private auditoria: AuditoriaService;
+
+  constructor(private prisma: PrismaClient) {
+    this.auditoria = new AuditoriaService(prisma);
+  }
 
   async listarUsuarios(filtros: {
     search?: string;
@@ -135,7 +140,7 @@ export class UsuariosService {
       createData.unidadeExecutanteId = data.unidadeExecutanteId.trim();
     }
 
-    return await this.prisma.usuario.create({
+    const usuario = await this.prisma.usuario.create({
       data: createData,
       select: {
         id: true,
@@ -154,6 +159,16 @@ export class UsuariosService {
         updatedAt: true
       }
     });
+
+    // Audit: CRIACAO_USUARIO
+    await this.auditoria.log({
+      acao: 'CRIACAO_USUARIO',
+      entidade: 'Usuario',
+      entidadeId: usuario.id,
+      detalhes: JSON.stringify({ nome: usuario.nome, email: usuario.email, tipo: usuario.tipo })
+    });
+
+    return usuario;
   }
 
   async atualizar(id: string, data: {
@@ -213,7 +228,7 @@ export class UsuariosService {
       updateData.unidadeExecutanteId = data.unidadeExecutanteId?.trim() || null;
     }
 
-    return await this.prisma.usuario.update({
+    const usuarioFinal = await this.prisma.usuario.update({
       where: { id },
       data: updateData,
       select: {
@@ -233,6 +248,16 @@ export class UsuariosService {
         updatedAt: true
       }
     });
+
+    // Audit: ATUALIZACAO_USUARIO
+    await this.auditoria.log({
+      acao: 'ATUALIZACAO_USUARIO',
+      entidade: 'Usuario',
+      entidadeId: id,
+      detalhes: JSON.stringify({ camposAlterados: Object.keys(updateData) })
+    });
+
+    return usuarioFinal;
   }
 
   async excluir(id: string) {
@@ -246,6 +271,14 @@ export class UsuariosService {
 
     await this.prisma.usuario.delete({
       where: { id }
+    });
+
+    // Audit: EXCLUSAO_USUARIO
+    await this.auditoria.log({
+      acao: 'EXCLUSAO_USUARIO',
+      entidade: 'Usuario',
+      entidadeId: id,
+      detalhes: JSON.stringify({ nome: usuario.nome, email: usuario.email })
     });
 
     return { message: 'Usuário excluído com sucesso' };

@@ -8,6 +8,7 @@ import {
   type ProcedimentoObrigatorio,
   type ExecucaoParaValidacao
 } from '../utils/validacao-apac.utils';
+import { AuditoriaService } from './auditoria.service';
 
 /** Procedimentos de biópsia só podem ser EXECUTADO após registro do resultado (nome contém "biópsia" ou "biopsia"). */
 function isProcedimentoBiopsia(nome: string): boolean {
@@ -28,10 +29,13 @@ function isConsultaMedicaEspecializada(nome: string): boolean {
 }
 
 export class SolicitacoesService {
+  private auditoria: AuditoriaService;
+
   constructor(private prisma: PrismaClient) {
     if (!prisma) {
       throw new Error('PrismaClient não foi fornecido ao SolicitacoesService');
     }
+    this.auditoria = new AuditoriaService(prisma);
   }
 
   async criarSolicitacao(data: {
@@ -114,7 +118,22 @@ export class SolicitacoesService {
       }
     });
 
-    return await this.buscarSolicitacaoPorId(solicitacao.id);
+    const solicitacaoFinal = await this.buscarSolicitacaoPorId(solicitacao.id);
+
+    // Audit: CRIACAO_SOLICITACAO
+    await this.auditoria.log({
+      usuarioId: data.criadoPorId,
+      acao: 'CRIACAO_SOLICITACAO',
+      entidade: 'SolicitacaoOci',
+      entidadeId: solicitacao.id,
+      detalhes: JSON.stringify({
+        pacienteId: data.pacienteId,
+        ociId: data.ociId,
+        protocolo: solicitacao.numeroProtocolo
+      })
+    });
+
+    return solicitacaoFinal;
   }
 
   async buscarSolicitacaoPorId(id: string) {
@@ -229,6 +248,7 @@ export class SolicitacoesService {
     unidadeOrigem?: string;
     unidadeDestino?: string | null;
     ociId?: string;
+    atualizadoPorId: string;
   }) {
     // Validar campos obrigatórios
     if (data.unidadeOrigem !== undefined && !data.unidadeOrigem.trim()) {
@@ -289,6 +309,7 @@ export class SolicitacoesService {
           observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
           unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
           unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
+          atualizadoPorId: data.atualizadoPorId,
           updatedAt: new Date()
         }
       });
@@ -320,12 +341,26 @@ export class SolicitacoesService {
           observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
           unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
           unidadeDestino: data.unidadeDestino !== undefined ? data.unidadeDestino : solicitacaoAtual.unidadeDestino,
+          atualizadoPorId: data.atualizadoPorId,
           updatedAt: new Date()
         }
       });
     }
 
-    return await this.buscarSolicitacaoPorId(id);
+    const solicitacaoFinal = await this.buscarSolicitacaoPorId(id);
+
+    // Audit: ATUALIZACAO_SOLICITACAO
+    await this.auditoria.log({
+      usuarioId: data.atualizadoPorId,
+      acao: 'ATUALIZACAO_SOLICITACAO',
+      entidade: 'SolicitacaoOci',
+      entidadeId: id,
+      detalhes: JSON.stringify({
+        camposAlterados: Object.keys(data).filter(k => (data as any)[k] !== undefined)
+      })
+    });
+
+    return solicitacaoFinal;
   }
 
   async listarSolicitacoes(filtros: {
@@ -576,6 +611,19 @@ export class SolicitacoesService {
     await this.prisma.solicitacaoOci.update({
       where: { id },
       data: dataAtualizacao
+    });
+
+    // Audit: ALTERACAO_STATUS
+    await this.auditoria.log({
+      usuarioId: atualizadoPorId,
+      acao: 'ALTERACAO_STATUS',
+      entidade: 'SolicitacaoOci',
+      entidadeId: id,
+      detalhes: JSON.stringify({
+        de: solicitacao.status,
+        para: status,
+        justificativa: justificativaCancelamento
+      })
     });
 
     // Atualizar alerta
@@ -948,7 +996,7 @@ export class SolicitacoesService {
     return vencidas.length;
   }
 
-  async excluirSolicitacao(id: string) {
+  async excluirSolicitacao(id: string, usuarioId: string) {
     const solicitacao = await this.prisma.solicitacaoOci.findUnique({
       where: { id },
       include: {
@@ -989,7 +1037,18 @@ export class SolicitacoesService {
     // Exclusão lógica (Soft Delete) para manter histórico/auditoria
     await this.prisma.solicitacaoOci.update({
       where: { id },
-      data: { deletedAt: new Date() }
+      data: {
+        deletedAt: new Date(),
+        atualizadoPorId: usuarioId
+      }
+    });
+
+    // Audit: EXCLUSAO_SOLICITACAO
+    await this.auditoria.log({
+      usuarioId,
+      acao: 'EXCLUSAO_SOLICITACAO',
+      entidade: 'SolicitacaoOci',
+      entidadeId: id
     });
 
     return { message: 'Solicitação excluída com sucesso (arquivada)' };

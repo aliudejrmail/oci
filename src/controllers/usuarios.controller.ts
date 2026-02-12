@@ -2,6 +2,9 @@ import { Response } from 'express';
 import { UsuariosService } from '../services/usuarios.service';
 import { prisma } from '../database/prisma';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { AuditoriaService } from '../services/auditoria.service';
+
+const auditoria = new AuditoriaService(prisma);
 
 const service = new UsuariosService(prisma);
 
@@ -166,6 +169,14 @@ export class UsuariosController {
       await prisma.usuario.update({
         where: { id },
         data: { tentativasLogin: 0, bloqueadoEm: null }
+      });
+
+      // Audit: DESBLOQUEIO_CONTA
+      await auditoria.log({
+        usuarioId: req.userId,
+        acao: 'DESBLOQUEIO_CONTA',
+        entidade: 'Usuario',
+        entidadeId: id
       });
 
       return res.json({ message: 'Usuário desbloqueado com sucesso' });

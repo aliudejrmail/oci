@@ -18,6 +18,7 @@ import profissionaisRoutes from './routes/profissionais.routes';
 import usuariosRoutes from './routes/usuarios.routes';
 import relatoriosRoutes from './routes/relatorios.routes';
 import sigtapRoutes from './routes/sigtap.routes';
+import auditoriaRoutes from './routes/auditoria.routes';
 
 // Importar Prisma
 import { prisma } from './database/prisma';
@@ -131,6 +132,7 @@ app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/sigtap', sigtapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/auditoria', auditoriaRoutes);
 
 // Em produção: servir frontend estático (SPA) e fallback para index.html
 if (isProduction) {
