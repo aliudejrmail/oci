@@ -7,7 +7,6 @@ export type FiltrosRelatorio = {
   status?: StatusSolicitacao;
   unidadeId?: string;
   tipoOci?: TipoOci;
-  ociId?: string;
 };
 
 function buildWhere(filtros: FiltrosRelatorio) {
@@ -29,7 +28,6 @@ function buildWhere(filtros: FiltrosRelatorio) {
     ];
   }
   if (filtros.tipoOci) where.tipo = filtros.tipoOci;
-  if (filtros.ociId) where.ociId = filtros.ociId;
   return where;
 }
 
@@ -144,6 +142,29 @@ export class RelatoriosService {
     return grupos.map((g) => ({ tipo: g.tipo, quantidade: g._count }));
   }
 
+  /** Contagem por OCI (Oferta de Cuidado Integrado) */
+  async porOci(filtros: FiltrosRelatorio) {
+    const where = buildWhere(filtros);
+    const grupos = await this.prisma.solicitacaoOci.groupBy({
+      by: ['ociId'],
+      where,
+      _count: true
+    });
+    const ids = grupos.map((g) => g.ociId);
+    const ocis = ids.length
+      ? await this.prisma.oci.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true }
+      })
+      : [];
+    const mapNome = Object.fromEntries(ocis.map((o) => [o.id, o.nome]));
+    return grupos.map((g) => ({
+      ociId: g.ociId,
+      ociNome: mapNome[g.ociId] ?? g.ociId,
+      quantidade: g._count
+    }));
+  }
+
   /** Procedimentos executados no período (execuções com status REALIZADO e dataExecucao no intervalo) */
   async procedimentosExecutados(filtros: FiltrosRelatorio, limite = 500) {
     const whereExecucao: Record<string, unknown> = {
@@ -163,7 +184,6 @@ export class RelatoriosService {
     const whereSolicitacaoBase: Record<string, unknown> = { deletedAt: null };
     if (filtros.status) whereSolicitacaoBase.status = filtros.status;
     if (filtros.tipoOci) whereSolicitacaoBase.tipo = filtros.tipoOci;
-    if (filtros.ociId) whereSolicitacaoBase.ociId = filtros.ociId;
 
     let whereExecucaoCompleto: Record<string, unknown> = {
       ...whereExecucao,
@@ -293,6 +313,7 @@ export class RelatoriosService {
       { id: 'por-unidade-origem', label: 'Por Unidade Solicitante', descricao: 'Volume de solicitações por Unidade Solicitante.' },
       { id: 'por-unidade-destino', label: 'Por Unidade Executante', descricao: 'Volume por Unidade Executante.' },
       { id: 'por-tipo-oci', label: 'Por tipo de OCI', descricao: 'Quantidade por tipo (Geral / Oncológico).' },
+      { id: 'por-oci', label: 'Por Oferta de Cuidado Integrado (OCI)', descricao: 'Volume de solicitações por OCI específica.' },
       { id: 'procedimentos-executados', label: 'Procedimentos executados', descricao: 'Lista de procedimentos realizados no período.' },
       { id: 'tempo-medio-conclusao', label: 'Tempo médio de conclusão', descricao: 'Média de dias entre solicitação e conclusão.' },
       { id: 'evolucao-mensal', label: 'Evolução mensal', descricao: 'Solicitações criadas e concluídas por mês.' }

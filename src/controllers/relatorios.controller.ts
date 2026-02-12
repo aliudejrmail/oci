@@ -11,7 +11,6 @@ type FiltrosQuery = {
   status?: string;
   unidadeId?: string;
   tipoOci?: string;
-  ociId?: string;
 };
 
 function parseFiltros(query: FiltrosQuery) {
@@ -22,7 +21,6 @@ function parseFiltros(query: FiltrosQuery) {
     filtros.status = query.status as StatusSolicitacao;
   }
   if (query.unidadeId) filtros.unidadeId = query.unidadeId;
-  if (query.ociId) filtros.ociId = query.ociId;
   if (query.tipoOci && Object.values(TipoOci).includes(query.tipoOci as TipoOci)) {
     filtros.tipoOci = query.tipoOci as TipoOci;
   }
@@ -73,6 +71,10 @@ export class RelatoriosController {
         }
         case 'por-tipo-oci': {
           const dados = await service.porTipoOci(filtros);
+          return res.json(dados);
+        }
+        case 'por-oci': {
+          const dados = await service.porOci(filtros);
           return res.json(dados);
         }
         case 'procedimentos-executados': {
