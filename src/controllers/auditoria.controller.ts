@@ -34,7 +34,7 @@ export class AuditoriaController {
         }
     }
 
-    async obterAcoesDisponiveis(req: Request, res: Response) {
+    async obterAcoesDisponiveis(_req: Request, res: Response) {
         try {
             const acoes = await prisma.auditoria.findMany({
                 distinct: ['acao'],
@@ -47,7 +47,7 @@ export class AuditoriaController {
         }
     }
 
-    async obterEntidadesDisponiveis(req: Request, res: Response) {
+    async obterEntidadesDisponiveis(_req: Request, res: Response) {
         try {
             const entidades = await prisma.auditoria.findMany({
                 distinct: ['entidade'],
