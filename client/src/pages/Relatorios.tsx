@@ -36,6 +36,8 @@ export default function Relatorios() {
   const [status, setStatus] = useState('')
   const [unidadeId, setUnidadeId] = useState('')
   const [tipoOci, setTipoOci] = useState('')
+  const [ociId, setOciId] = useState('')
+  const [ocis, setOcis] = useState<Array<{ id: string; nome: string }>>([])
   const [loading, setLoading] = useState(false)
   const [carregandoOpcoes, setCarregandoOpcoes] = useState(true)
   const [resultado, setResultado] = useState<Record<string, unknown> | null>(null)
@@ -52,6 +54,10 @@ export default function Relatorios() {
     api.get('/unidades?ativo=true')
       .then((res) => setUnidades(Array.isArray(res.data) ? res.data : []))
       .catch(() => setUnidades([]))
+
+    api.get('/ocis')
+      .then((res) => setOcis(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setOcis([]))
   }, [])
 
   const gerarRelatorio = async (e: React.FormEvent) => {
@@ -74,6 +80,7 @@ export default function Relatorios() {
         params.append('unidadeId', unidadeId)
       }
       if (tipoOci) params.append('tipoOci', tipoOci)
+      if (ociId) params.append('ociId', ociId)
       const res = await api.get(`/relatorios?${params.toString()}`)
       setResultado(res.data as Record<string, unknown>)
     } catch (err: unknown) {
@@ -207,6 +214,20 @@ export default function Relatorios() {
             >
               {TIPO_OCI_OPCOES.map((t) => (
                 <option key={t.valor || 'todos'} value={t.valor}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Oferta de Cuidado (OCI)</label>
+            <select
+              value={ociId}
+              onChange={(e) => setOciId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Todas</option>
+              {ocis.map((o) => (
+                <option key={o.id} value={o.id}>{o.nome}</option>
               ))}
             </select>
           </div>

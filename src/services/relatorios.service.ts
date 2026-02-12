@@ -7,6 +7,7 @@ export type FiltrosRelatorio = {
   status?: StatusSolicitacao;
   unidadeId?: string;
   tipoOci?: TipoOci;
+  ociId?: string;
 };
 
 function buildWhere(filtros: FiltrosRelatorio) {
@@ -28,6 +29,7 @@ function buildWhere(filtros: FiltrosRelatorio) {
     ];
   }
   if (filtros.tipoOci) where.tipo = filtros.tipoOci;
+  if (filtros.ociId) where.ociId = filtros.ociId;
   return where;
 }
 
@@ -161,6 +163,7 @@ export class RelatoriosService {
     const whereSolicitacaoBase: Record<string, unknown> = { deletedAt: null };
     if (filtros.status) whereSolicitacaoBase.status = filtros.status;
     if (filtros.tipoOci) whereSolicitacaoBase.tipo = filtros.tipoOci;
+    if (filtros.ociId) whereSolicitacaoBase.ociId = filtros.ociId;
 
     let whereExecucaoCompleto: Record<string, unknown> = {
       ...whereExecucao,
