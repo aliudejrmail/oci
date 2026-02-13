@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { RelatoriosService } from '../services/relatorios.service';
+import { RelatoriosService, FiltrosRelatorio } from '../services/relatorios.service';
 import { prisma } from '../database/prisma';
-import { StatusSolicitacao, TipoOci } from '@prisma/client';
+import { StatusSolicitacao } from '@prisma/client';
 
 const service = new RelatoriosService(prisma);
 
@@ -10,20 +10,18 @@ type FiltrosQuery = {
   dataFim?: string;
   status?: string;
   unidadeId?: string;
-  tipoOci?: string;
+  tipoOciId?: string;
 };
 
 function parseFiltros(query: FiltrosQuery) {
-  const filtros: Parameters<RelatoriosService['resumo']>[0] = {};
+  const filtros: FiltrosRelatorio = {};
   if (query.dataInicio) filtros.dataInicio = query.dataInicio;
   if (query.dataFim) filtros.dataFim = query.dataFim;
   if (query.status && Object.values(StatusSolicitacao).includes(query.status as StatusSolicitacao)) {
     filtros.status = query.status as StatusSolicitacao;
   }
   if (query.unidadeId) filtros.unidadeId = query.unidadeId;
-  if (query.tipoOci && Object.values(TipoOci).includes(query.tipoOci as TipoOci)) {
-    filtros.tipoOci = query.tipoOci as TipoOci;
-  }
+  if (query.tipoOciId) filtros.tipoOciId = query.tipoOciId;
   return filtros;
 }
 

@@ -3,8 +3,8 @@
  * Geral: 60 dias
  * Oncológico: 30 dias
  */
-export function calcularDataPrazo(tipoOci: 'GERAL' | 'ONCOLOGICO', dataSolicitacao: Date = new Date()): Date {
-  const dias = tipoOci === 'ONCOLOGICO' ? 30 : 60;
+export function calcularDataPrazo(tipoOci: string, dataSolicitacao: Date = new Date()): Date {
+  const dias = tipoOci.toUpperCase().includes('ONCOLOGICO') ? 30 : 60;
   const prazo = new Date(dataSolicitacao);
   prazo.setDate(prazo.getDate() + dias);
   return prazo;
@@ -18,10 +18,10 @@ export function calcularDiasRestantes(dataPrazo: Date): number {
   hoje.setHours(0, 0, 0, 0);
   const prazo = new Date(dataPrazo);
   prazo.setHours(0, 0, 0, 0);
-  
+
   const diffTime = prazo.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   return diffDays;
 }
 
@@ -29,7 +29,7 @@ export function calcularDiasRestantes(dataPrazo: Date): number {
  * Prazo para registro do resultado de biópsia – OCI GERAL: 30 dias a partir da data de coleta.
  * (Oncológica usa calcularPrazoResultadoBiopsiaOncologico com data da consulta.)
  */
-export function calcularPrazoResultadoBiopsia(_tipoOci: 'GERAL' | 'ONCOLOGICO', dataColeta: Date): Date {
+export function calcularPrazoResultadoBiopsia(_tipoOci: string, dataColeta: Date): Date {
   const dias = 30; // Geral: 30 dias da coleta
   const prazo = new Date(dataColeta);
   prazo.setDate(prazo.getDate() + dias);
@@ -50,9 +50,9 @@ export function calcularPrazoResultadoBiopsiaOncologico(dataConsultaEspecializad
 /**
  * Determina o nível de alerta baseado nos dias restantes
  */
-export function determinarNivelAlerta(diasRestantes: number, tipoOci: 'GERAL' | 'ONCOLOGICO'): 'INFO' | 'ATENCAO' | 'CRITICO' {
-  const limiteCritico = tipoOci === 'ONCOLOGICO' ? 5 : 10;
-  const limiteAtencao = tipoOci === 'ONCOLOGICO' ? 10 : 20;
+export function determinarNivelAlerta(diasRestantes: number, tipoOci: string): 'INFO' | 'ATENCAO' | 'CRITICO' {
+  const limiteCritico = tipoOci.toUpperCase().includes('ONCOLOGICO') ? 5 : 10;
+  const limiteAtencao = tipoOci.toUpperCase().includes('ONCOLOGICO') ? 10 : 20;
 
   if (diasRestantes < 0) {
     return 'CRITICO'; // Vencido
@@ -165,7 +165,7 @@ export function dataFimCompetencia(competencia: string): Date {
 export function calcularDecimoDiaUtilMesSeguinte(competencia: string): Date {
   const ano = parseInt(competencia.slice(0, 4), 10);
   const mes = parseInt(competencia.slice(4, 6), 10); // 1-12
-  
+
   // Calcular mês seguinte
   let mesSeguinte = mes + 1;
   let anoSeguinte = ano;
@@ -173,12 +173,12 @@ export function calcularDecimoDiaUtilMesSeguinte(competencia: string): Date {
     mesSeguinte = 1;
     anoSeguinte = ano + 1;
   }
-  
+
   // Começar do dia 1 do mês seguinte
   let dia = 1;
   let diasUteis = 0;
   const data = new Date(anoSeguinte, mesSeguinte - 1, dia);
-  
+
   // Contar dias úteis até chegar ao quinto
   // Dias úteis: segunda (1) a sexta (5)
   while (diasUteis < 5) {
@@ -195,10 +195,10 @@ export function calcularDecimoDiaUtilMesSeguinte(competencia: string): Date {
     dia++;
     data.setDate(dia);
   }
-  
+
   // Garantir que a hora está no início do dia
   data.setHours(0, 0, 0, 0);
-  
+
   return data;
 }
 
@@ -228,16 +228,16 @@ export function dataLimiteRegistroOncologico(
  */
 export function calcularDiasRestantesCompetenciaApac(competenciaFimApac: string | null): number | null {
   if (!competenciaFimApac) return null;
-  
+
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
-  
+
   // Calcular o quinto dia útil do mês seguinte ao fim da competência
   const prazoApresentacao = calcularDecimoDiaUtilMesSeguinte(competenciaFimApac);
   prazoApresentacao.setHours(0, 0, 0, 0);
-  
+
   const diffTime = prazoApresentacao.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   return diffDays;
 }

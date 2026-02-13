@@ -1,4 +1,4 @@
-import { PrismaClient, StatusSolicitacao, TipoOci } from '@prisma/client';
+import { PrismaClient, StatusSolicitacao } from '@prisma/client';
 import { STATUS_EXECUCAO } from '../constants/status-execucao';
 
 export type FiltrosRelatorio = {
@@ -6,7 +6,7 @@ export type FiltrosRelatorio = {
   dataFim?: string;
   status?: StatusSolicitacao;
   unidadeId?: string;
-  tipoOci?: TipoOci;
+  tipoOciId?: string;
 };
 
 function buildWhere(filtros: FiltrosRelatorio) {
@@ -27,7 +27,7 @@ function buildWhere(filtros: FiltrosRelatorio) {
       { unidadeDestinoId: filtros.unidadeId }
     ];
   }
-  if (filtros.tipoOci) where.tipo = filtros.tipoOci;
+  if (filtros.tipoOciId) where.tipoId = filtros.tipoOciId;
   return where;
 }
 
@@ -44,16 +44,23 @@ export class RelatoriosService {
         where,
         _count: true
       }),
-      this.prisma.solicitacaoOci.groupBy({
-        by: ['tipo'],
+      (this.prisma.solicitacaoOci as any).groupBy({
+        by: ['tipoId'],
         where,
         _count: true
       })
     ]);
+
+    const tiposIds = porTipo.map((t: any) => t.tipoId);
+    const tiposOci = tiposIds.length
+      ? await (this.prisma as any).tipoOci.findMany({ where: { id: { in: tiposIds } } })
+      : [];
+    const mapTipos = Object.fromEntries(tiposOci.map((t: any) => [t.id, t.nome]));
+
     return {
       total,
-      porStatus: porStatus.map((s) => ({ status: s.status, quantidade: s._count })),
-      porTipo: porTipo.map((t) => ({ tipo: t.tipo, quantidade: t._count }))
+      porStatus: porStatus.map((s: any) => ({ status: s.status, quantidade: s._count })),
+      porTipo: porTipo.map((t: any) => ({ tipo: mapTipos[t.tipoId] ?? t.tipoId, quantidade: t._count }))
     };
   }
 
@@ -66,9 +73,9 @@ export class RelatoriosService {
       orderBy: { dataSolicitacao: 'desc' },
       include: {
         paciente: { select: { nome: true, cpf: true } },
-        oci: { select: { nome: true, codigo: true, tipo: true } },
+        oci: { select: { nome: true, codigo: true, tipoOci: { select: { nome: true } } } },
         medicoSolicitante: { select: { nome: true, cns: true } }
-      }
+      } as any
     });
     const total = await this.prisma.solicitacaoOci.count({ where });
     return { total, solicitacoes, limite };
@@ -134,12 +141,22 @@ export class RelatoriosService {
   /** Contagem por tipo OCI (GERAL / ONCOLOGICO) */
   async porTipoOci(filtros: FiltrosRelatorio) {
     const where = buildWhere(filtros);
-    const grupos = await this.prisma.solicitacaoOci.groupBy({
-      by: ['tipo'],
+    const grupos = await (this.prisma.solicitacaoOci as any).groupBy({
+      by: ['tipoId'],
       where,
       _count: true
     });
-    return grupos.map((g) => ({ tipo: g.tipo, quantidade: g._count }));
+
+    const ids = grupos.map((g: any) => g.tipoId);
+    const tipos = ids.length
+      ? await (this.prisma as any).tipoOci.findMany({ where: { id: { in: ids } } })
+      : [];
+    const mapNome = Object.fromEntries(tipos.map((t: any) => [t.id, t.nome]));
+
+    return grupos.map((g: any) => ({
+      tipo: mapNome[g.tipoId] ?? g.tipoId,
+      quantidade: g._count
+    }));
   }
 
   /** Contagem por OCI (Oferta de Cuidado Integrado) */
@@ -183,7 +200,7 @@ export class RelatoriosService {
     // Filtro na solicitação: status, unidade (origem, destino ou executora) e tipo OCI
     const whereSolicitacaoBase: Record<string, unknown> = { deletedAt: null };
     if (filtros.status) whereSolicitacaoBase.status = filtros.status;
-    if (filtros.tipoOci) whereSolicitacaoBase.tipo = filtros.tipoOci;
+    if (filtros.tipoOciId) whereSolicitacaoBase.tipoId = filtros.tipoOciId;
 
     let whereExecucaoCompleto: Record<string, unknown> = {
       ...whereExecucao,

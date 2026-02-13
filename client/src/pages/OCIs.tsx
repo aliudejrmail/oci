@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../services/api'
-import { Search, Plus, Package, Edit, X, Save } from 'lucide-react'
+import { Search, Plus, Package, Edit, X, Save, Trash2, Settings } from 'lucide-react'
 
 interface Procedimento {
   id: string
@@ -18,7 +18,8 @@ interface OCI {
   codigo: string
   nome: string
   descricao?: string
-  tipo: string
+  tipoId: string
+  tipo?: { id: string; nome: string }
   prazoMaximoDias: number
   ativo: boolean
   procedimentos: Procedimento[]
@@ -27,12 +28,21 @@ interface OCI {
   }
 }
 
+interface TipoOci {
+  id: string
+  nome: string
+  descricao?: string
+  ativo: boolean
+}
+
 export default function OCIs() {
   const [ocis, setOcis] = useState<OCI[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('')
   const [erroApi, setErroApi] = useState<string | null>(null)
+
+  // Estados para edição de OCI
   const [ociEdit, setOciEdit] = useState<OCI | null>(null)
   const [formEdit, setFormEdit] = useState<{
     nome: string
@@ -42,8 +52,18 @@ export default function OCIs() {
     ativo: boolean
   }>({ nome: '', descricao: '', tipo: 'GERAL', prazoMaximoDias: 60, ativo: true })
   const [procedimentosEdit, setProcedimentosEdit] = useState<Array<Procedimento & { obrigatorio: boolean }>>([])
+
+  // Estados para Tipos de OCI
+  const [tiposOci, setTiposOci] = useState<TipoOci[]>([])
+  const [modalTiposOpen, setModalTiposOpen] = useState(false)
+  const [novoTipo, setNovoTipo] = useState({ nome: '', descricao: '' })
+
   const [salvando, setSalvando] = useState(false)
   const [erroModal, setErroModal] = useState<string | null>(null)
+
+  useEffect(() => {
+    carregarTiposOci()
+  }, [])
 
   useEffect(() => {
     carregarOCIs()
@@ -54,7 +74,7 @@ export default function OCIs() {
     setFormEdit({
       nome: oci.nome,
       descricao: oci.descricao ?? '',
-      tipo: oci.tipo,
+      tipo: oci.tipoId,
       prazoMaximoDias: oci.prazoMaximoDias,
       ativo: oci.ativo
     })
@@ -116,12 +136,53 @@ export default function OCIs() {
     }
   }
 
+  const carregarTiposOci = async () => {
+    try {
+      const res = await api.get('/tipos-oci')
+      setTiposOci(res.data)
+      // Se não houver tipo selecionado, padrão para o primeiro
+      if (res.data.length > 0 && !formEdit.tipo) {
+        setFormEdit(f => ({ ...f, tipo: res.data[0].id }))
+      }
+    } catch (e) {
+      console.error('Erro ao buscar tipos de OCI:', e)
+    }
+  }
+
+  const salvarNovoTipo = async () => {
+    if (!novoTipo.nome.trim()) {
+      setErroModal('Nome do tipo é obrigatório.')
+      return
+    }
+    setSalvando(true)
+    setErroModal(null)
+    try {
+      await api.post('/tipos-oci', novoTipo)
+      setNovoTipo({ nome: '', descricao: '' })
+      await carregarTiposOci()
+    } catch (error: any) {
+      setErroModal(error.response?.data?.message || error.message || 'Erro ao criar tipo.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const excluirTipo = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este tipo?')) return
+    try {
+      await api.delete(`/tipos-oci/${id}`)
+      await carregarTiposOci()
+    } catch (error: any) {
+      setErroModal(error.response?.data?.message || error.message || 'Erro ao excluir tipo.')
+    }
+  }
+
   const carregarOCIs = async () => {
     setErroApi(null)
     try {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
-      if (filtroTipo) params.append('tipo', filtroTipo)
+      if (filtroTipo) params.append('tipoId', filtroTipo)
       params.append('ativo', 'true')
 
       const response = await api.get(`/ocis?${params.toString()}`)
@@ -151,10 +212,19 @@ export default function OCIs() {
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">OCIs - Ofertas de Cuidados Integrados</h1>
           <p className="text-gray-600 mt-1">Catálogo de OCIs disponíveis</p>
         </div>
-        <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2">
-          <Plus size={20} />
-          Nova OCI
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setModalTiposOpen(true)}
+            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+          >
+            <Settings size={20} />
+            Gerenciar Tipos
+          </button>
+          <button className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center gap-2">
+            <Plus size={20} />
+            Nova OCI
+          </button>
+        </div>
       </div>
 
       {erroApi && (
@@ -181,8 +251,9 @@ export default function OCIs() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Todos os tipos</option>
-            <option value="GERAL">Geral</option>
-            <option value="ONCOLOGICO">Oncológico</option>
+            {tiposOci.map(t => (
+              <option key={t.id} value={t.id}>{t.nome}</option>
+            ))}
           </select>
         </div>
 
@@ -218,12 +289,11 @@ export default function OCIs() {
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Tipo:</span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      oci.tipo === 'ONCOLOGICO' 
-                        ? 'bg-pink-100 text-pink-800' 
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {oci.tipo === 'ONCOLOGICO' ? 'Oncológico' : 'Geral'}
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${oci.tipo?.nome.toUpperCase().includes('ONCOLOGICO')
+                      ? 'bg-pink-100 text-pink-800'
+                      : 'bg-blue-100 text-blue-800'
+                      }`}>
+                      {oci.tipo?.nome || 'Geral'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
@@ -291,6 +361,88 @@ export default function OCIs() {
         </div>
       </div>
 
+      {/* Modal Gerenciar Tipos */}
+      {modalTiposOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Gerenciar Tipos de OCI</h2>
+              <button
+                type="button"
+                onClick={() => setModalTiposOpen(false)}
+                className="p-1 rounded text-gray-500 hover:bg-gray-100"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 border-b bg-gray-50">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Novo Tipo</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nome (ex: ONCOLÓGICO)"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  value={novoTipo.nome}
+                  onChange={e => setNovoTipo({ ...novoTipo, nome: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="Descrição (opcional)"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  value={novoTipo.descricao}
+                  onChange={e => setNovoTipo({ ...novoTipo, descricao: e.target.value })}
+                />
+                <button
+                  onClick={salvarNovoTipo}
+                  disabled={salvando}
+                  className="bg-primary-600 text-white px-3 py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+              {erroModal && (
+                <p className="text-red-600 text-xs mt-2">{erroModal}</p>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Tipos Cadastrados</h3>
+              <div className="space-y-2">
+                {tiposOci.map(tipo => (
+                  <div key={tipo.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{tipo.nome}</p>
+                      {tipo.descricao && <p className="text-xs text-gray-500">{tipo.descricao}</p>}
+                    </div>
+                    <button
+                      onClick={() => excluirTipo(tipo.id)}
+                      className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-50"
+                      title="Excluir tipo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {tiposOci.length === 0 && (
+                  <p className="text-center text-gray-500 text-sm py-4">Nenhum tipo cadastrado.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={() => setModalTiposOpen(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Editar OCI */}
       {ociEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -307,7 +459,7 @@ export default function OCIs() {
                 <X size={20} />
               </button>
             </div>
-            {erroModal && (
+            {erroModal && !modalTiposOpen && (
               <div className="mx-4 mt-2 p-2 rounded bg-red-50 text-red-700 text-sm">{erroModal}</div>
             )}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -350,8 +502,9 @@ export default function OCIs() {
                       onChange={(e) => setFormEdit((f) => ({ ...f, tipo: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
                     >
-                      <option value="GERAL">Geral</option>
-                      <option value="ONCOLOGICO">Oncológico</option>
+                      {tiposOci.map(t => (
+                        <option key={t.id} value={t.id}>{t.nome}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

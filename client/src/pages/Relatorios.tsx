@@ -20,11 +20,7 @@ const STATUS_OPCOES = [
   { valor: 'CANCELADA', label: 'Cancelada' }
 ]
 
-const TIPO_OCI_OPCOES = [
-  { valor: '', label: 'Todos' },
-  { valor: 'GERAL', label: 'Geral' },
-  { valor: 'ONCOLOGICO', label: 'Oncológico' }
-]
+// Removido TIPO_OCI_OPCOES fixo
 
 export default function Relatorios() {
   const { usuario } = useAuth()
@@ -40,6 +36,7 @@ export default function Relatorios() {
   const [carregandoOpcoes, setCarregandoOpcoes] = useState(true)
   const [resultado, setResultado] = useState<Record<string, unknown> | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [tiposOci, setTiposOci] = useState<Array<{ id: string; nome: string }>>([])
 
   useEffect(() => {
     api.get('/relatorios/opcoes')
@@ -52,6 +49,10 @@ export default function Relatorios() {
     api.get('/unidades?ativo=true')
       .then((res) => setUnidades(Array.isArray(res.data) ? res.data : []))
       .catch(() => setUnidades([]))
+
+    api.get('/tipos-oci')
+      .then((res) => setTiposOci(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setTiposOci([]))
   }, [])
 
   const gerarRelatorio = async (e: React.FormEvent) => {
@@ -73,7 +74,7 @@ export default function Relatorios() {
       if (unidadeId) {
         params.append('unidadeId', unidadeId)
       }
-      if (tipoOci) params.append('tipoOci', tipoOci)
+      if (tipoOci) params.append('tipoOciId', tipoOci)
       const res = await api.get(`/relatorios?${params.toString()}`)
       setResultado(res.data as Record<string, unknown>)
     } catch (err: unknown) {
@@ -203,10 +204,11 @@ export default function Relatorios() {
             <select
               value={tipoOci}
               onChange={(e) => setTipoOci(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
             >
-              {TIPO_OCI_OPCOES.map((t) => (
-                <option key={t.valor || 'todos'} value={t.valor}>{t.label}</option>
+              <option value="">Todos os tipos de OCI</option>
+              {tiposOci.map((t) => (
+                <option key={t.id} value={t.id}>{t.nome}</option>
               ))}
             </select>
           </div>

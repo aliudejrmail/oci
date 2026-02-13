@@ -42,10 +42,11 @@ export default function Solicitacoes() {
   const [modalNovaAberta, setModalNovaAberta] = useState(false)
   const [filtros, setFiltros] = useState({
     status: '',
-    tipo: '',
     search: '',
-    unidadeExecutora: ''
+    unidadeExecutora: '',
+    tipoId: ''
   })
+  const [tiposOci, setTiposOci] = useState<Array<{ id: string; nome: string }>>([])
   const [searchInput, setSearchInput] = useState('')
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null)
   const [unidadesExecutantes, setUnidadesExecutantes] = useState<Array<{ id: string; cnes: string; nome: string }>>([])
@@ -63,6 +64,9 @@ export default function Solicitacoes() {
         setUnidadesExecutantes(Array.isArray(res.data) ? res.data : [])
       }).catch(() => setUnidadesExecutantes([]))
     }
+
+    // Buscar tipos de OCI para filtro
+    api.get('/tipos-oci').then(res => setTiposOci(res.data)).catch(() => setTiposOci([]))
   }, [podeFiltrarPorUnidade])
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export default function Solicitacoes() {
       setLoading(true)
       const params = new URLSearchParams()
       if (filtros.status) params.append('status', filtros.status)
-      if (filtros.tipo) params.append('tipo', filtros.tipo)
+      if (filtros.tipoId) params.append('tipoId', filtros.tipoId)
       if (filtros.search) params.append('search', filtros.search)
       if (filtros.unidadeExecutora) params.append('unidadeExecutora', filtros.unidadeExecutora)
       // Adicionar timestamp para evitar cache
@@ -286,13 +290,14 @@ export default function Solicitacoes() {
             <option value="VENCIDA">Vencida</option>
           </select>
           <select
-            value={filtros.tipo}
-            onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
+            value={filtros.tipoId}
+            onChange={(e) => setFiltros({ ...filtros, tipoId: e.target.value })}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Todos os tipos</option>
-            <option value="GERAL">Geral</option>
-            <option value="ONCOLOGICO">Oncológico</option>
+            {tiposOci.map(t => (
+              <option key={t.id} value={t.id}>{t.nome}</option>
+            ))}
           </select>
           {podeFiltrarPorUnidade && (
             <select
@@ -363,7 +368,7 @@ export default function Solicitacoes() {
                   // Verificar se o primeiro procedimento foi executado
                   // (quando dataInicioValidadeApac não é null)
                   const primeiroProcedimentoExecutado = !!solicitacao.dataInicioValidadeApac
-                  
+
                   return (
                     <tr key={solicitacao.id} className="hover:bg-gray-50">
                       <td className="px-2 py-2 whitespace-nowrap">
@@ -422,9 +427,8 @@ export default function Solicitacoes() {
                               Registro proc.: {formatarData(solicitacao.dataFimValidadeApac)}
                             </div>
                             {alerta && (
-                              <div className={`text-[10px] ${
-                                alerta.diasRestantes < 0 ? 'text-red-600 font-medium' : alerta.diasRestantes <= 10 ? 'text-orange-600' : 'text-gray-500'
-                              }`}>
+                              <div className={`text-[10px] ${alerta.diasRestantes < 0 ? 'text-red-600 font-medium' : alerta.diasRestantes <= 10 ? 'text-orange-600' : 'text-gray-500'
+                                }`}>
                                 {alerta.diasRestantes < 0 ? `${Math.abs(alerta.diasRestantes)}d venc.` : `${alerta.diasRestantes}d rest.`} (registro)
                               </div>
                             )}
@@ -440,9 +444,8 @@ export default function Solicitacoes() {
                               {solicitacao.dataPrazo ? formatarData(solicitacao.dataPrazo) : '–'}
                             </div>
                             {alerta && (
-                              <div className={`text-[10px] ${
-                                alerta.diasRestantes < 0 ? 'text-red-600 font-medium' : alerta.diasRestantes <= 10 ? 'text-orange-600' : 'text-gray-500'
-                              }`}>
+                              <div className={`text-[10px] ${alerta.diasRestantes < 0 ? 'text-red-600 font-medium' : alerta.diasRestantes <= 10 ? 'text-orange-600' : 'text-gray-500'
+                                }`}>
                                 {alerta.diasRestantes < 0 ? `${Math.abs(alerta.diasRestantes)}d venc.` : `${alerta.diasRestantes}d rest.`}
                               </div>
                             )}

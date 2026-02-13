@@ -54,8 +54,8 @@ export class DashboardService {
       this.prisma.solicitacaoOci.count({ where: { ...where, status: StatusSolicitacao.CONCLUIDA } }),
       this.prisma.solicitacaoOci.count({ where: { ...where, status: StatusSolicitacao.VENCIDA } }),
       this.prisma.solicitacaoOci.count({ where: { ...where, status: StatusSolicitacao.CANCELADA } }),
-      this.prisma.solicitacaoOci.groupBy({
-        by: ['tipo'],
+      (this.prisma.solicitacaoOci as any).groupBy({
+        by: ['tipoId'],
         where,
         _count: true
       })
@@ -114,30 +114,35 @@ export class DashboardService {
       tempoMedioDias = tempos.reduce((a, b) => a + b, 0) / tempos.length;
     }
 
+    // Enriquecer porTipo com nomes
+    const tiposIds = porTipo.map((g: any) => g.tipoId);
+    const tiposOci = tiposIds.length
+      ? await (this.prisma as any).tipoOci.findMany({ where: { id: { in: tiposIds } } })
+      : [];
+    const mapNomes = Object.fromEntries(tiposOci.map((t: any) => [t.id, t.nome]));
+
+    const porTipoEnriquecido = porTipo.map((g: any) => ({
+      tipo: mapNomes[g.tipoId] ?? g.tipoId,
+      quantidade: g._count
+    }));
+
     return {
       totalSolicitacoes,
-      porStatus: {
-        pendentes: pendentesFinal,
-        emAndamento: emAndamentoFinal,
-        concluidas: concluidasFinal,
-        vencidas: vencidasFinal,
-        canceladas: canceladasFinal
-      },
-      porTipo: porTipo.reduce((acc, item) => {
-        acc[item.tipo] = item._count;
-        return acc;
-      }, {} as Record<string, number>),
-      indicadores: {
-        taxaConclusao: Math.round(taxaConclusao * 100) / 100,
-        tempoMedioConclusaoDias: Math.round(tempoMedioDias * 100) / 100
-      }
+      pendentes: pendentesFinal,
+      emAndamento: emAndamentoFinal,
+      concluidas: concluidasFinal,
+      vencidas: vencidasFinal,
+      canceladas: canceladasFinal,
+      taxaConclusao: Math.round(taxaConclusao * 100) / 100,
+      tempoMedioConclusaoDias: Math.round(tempoMedioDias * 100) / 100,
+      porTipo: porTipoEnriquecido
     };
   }
 
   async obterAlertasPrazos() {
     try {
       // Buscar solicitações com alertas
-      const alertas = await this.prisma.alertaPrazo.findMany({
+      const alertas = await (this.prisma.alertaPrazo as any).findMany({
         where: {
           solicitacao: {
             deletedAt: null,
@@ -161,7 +166,7 @@ export class DashboardService {
                   id: true,
                   codigo: true,
                   nome: true,
-                  tipo: true,
+                  tipoOci: true,
                   procedimentos: {
                     where: { obrigatorio: true },
                     select: { id: true, codigo: true, nome: true }
@@ -181,10 +186,10 @@ export class DashboardService {
           }
         },
         orderBy: [
-          { nivelAlerta: 'asc' }, // CRITICO primeiro
+          { nivelAlerta: 'asc' },
           { diasRestantes: 'asc' }
         ]
-      });
+      }) as any[];
 
       // Enriquecer cada alerta com prazos relevantes
       // Quando há competência APAC: diasRestantes refere-se EXCLUSIVAMENTE à DATA LIMITE para REGISTRO/REALIZAÇÃO de procedimentos
@@ -197,8 +202,9 @@ export class DashboardService {
 
         if (sol.competenciaFimApac) {
           // Oncológico: primeiro critério 30 dias desde a consulta; considera-se também 2 competências
-          const tipoOci = sol.oci?.tipo ?? (sol as any).tipo;
-          dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
+          const tipoNome = (sol.oci as any)?.tipoOci?.nome ?? 'GERAL';
+          const prazo = tipoNome.toUpperCase().includes('ONCOLOGICO') ? 30 : 60;
+          dataFimValidadeApac = (tipoNome.includes('ONCOLOGICO') && sol.dataInicioValidadeApac)
             ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
             : dataFimCompetencia(sol.competenciaFimApac);
           prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(sol.competenciaFimApac);
@@ -222,7 +228,7 @@ export class DashboardService {
           // Dias restantes: SEMPRE em relação ao REGISTRO/REALIZAÇÃO de procedimentos (ex: 31/01), NUNCA à apresentação APAC (5º dia útil)
           diasRestantesExibir = calcularDiasRestantes(dataFimValidadeApac);
           // Recalcular nivelAlerta com base nos dias até o registro de procedimentos
-          alerta = { ...alerta, nivelAlerta: determinarNivelAlerta(diasRestantesExibir, sol.oci?.tipo || 'GERAL') };
+          alerta = { ...alerta, nivelAlerta: determinarNivelAlerta(diasRestantesExibir, sol.oci?.tipo?.nome || 'GERAL') };
         } else {
           prazoApresentacaoApac = sol.dataPrazo ? new Date(sol.dataPrazo) : null;
         }
@@ -270,7 +276,9 @@ export class DashboardService {
           solicitacao: {
             include: {
               paciente: { select: { id: true, nome: true, cpf: true } },
-              oci: { select: { id: true, codigo: true, nome: true, tipo: true } }
+              oci: {
+                select: { id: true, codigo: true, nome: true, tipoOci: { select: { nome: true } } }
+              }
             }
           },
           procedimento: { select: { id: true, nome: true, codigo: true } }
@@ -280,21 +288,21 @@ export class DashboardService {
       // Filtrar apenas os que são anatomo-patológicos (nome contém anatomo E patol)
       const execucoesAnatomo = execucoes.filter((e) => isProcedimentoAnatomoPatologico(e.procedimento.nome));
 
-      const alertas = execucoesAnatomo.map((exec) => {
+      const alertas = execucoesAnatomo.map((exec: any) => {
         const dataColeta = exec.dataColetaMaterialBiopsia!;
-        const tipoOci = (exec.solicitacao.oci?.tipo ?? (exec.solicitacao as any).tipo ?? 'GERAL') as 'GERAL' | 'ONCOLOGICO';
+        const tipoNome = (exec.solicitacao.oci?.tipo?.nome ?? 'GERAL');
         const dataConsulta = (exec.solicitacao as any).dataInicioValidadeApac as Date | null | undefined;
-        const prazoResultado = tipoOci === 'ONCOLOGICO' && dataConsulta
+        const prazoResultado = tipoNome.includes('ONCOLOGICO') && dataConsulta
           ? calcularPrazoResultadoBiopsiaOncologico(dataConsulta)
-          : calcularPrazoResultadoBiopsia(tipoOci, dataColeta);
+          : calcularPrazoResultadoBiopsia(tipoNome, dataColeta);
         const diasRestantes = calcularDiasRestantes(prazoResultado);
-        const nivelAlerta = determinarNivelAlerta(diasRestantes, tipoOci);
+        const nivelAlerta = determinarNivelAlerta(diasRestantes, tipoNome);
         return {
           id: exec.id,
           diasRestantes,
           nivelAlerta,
           prazoResultado,
-          tipoOci,
+          tipoOci: tipoNome,
           tipoPrazo: 'Resultado anatomo-patológico',
           dataColeta,
           solicitacao: exec.solicitacao,
@@ -334,15 +342,10 @@ export class DashboardService {
             cpf: true
           }
         },
+        alerta: true,
         oci: {
-          select: {
-            id: true,
-            codigo: true,
-            nome: true,
-            tipo: true
-          }
-        },
-        alerta: true
+          include: { tipoOci: true, procedimentos: true }
+        }
       },
       orderBy: {
         dataPrazo: 'asc'
@@ -366,7 +369,7 @@ export class DashboardService {
         select: {
           dataSolicitacao: true,
           status: true,
-          tipo: true
+          tipoId: true
         }
       });
 
@@ -390,7 +393,7 @@ export class DashboardService {
         if (s.status === StatusSolicitacao.CONCLUIDA) {
           evolucao[data].concluidas++;
         }
-        evolucao[data].porTipo[s.tipo] = (evolucao[data].porTipo[s.tipo] || 0) + 1;
+        evolucao[data].porTipo[s.tipoId] = (evolucao[data].porTipo[s.tipoId] || 0) + 1;
       });
 
       return Object.entries(evolucao)
@@ -422,31 +425,20 @@ export class DashboardService {
           }
         },
         include: {
-          paciente: {
-            select: {
-              id: true,
-              nome: true,
-              cpf: true
-            }
-          },
+          paciente: { select: { id: true, nome: true, cpf: true } },
           oci: {
-            select: {
-              id: true,
-              codigo: true,
-              nome: true,
-              tipo: true
-            }
+            select: { id: true, codigo: true, nome: true, tipoOci: { select: { nome: true } } }
           }
         }
-      });
+      }) as any[];
 
       // Filtrar apenas as que estão próximas do vencimento (20 dias ou menos)
       // Dias restantes em relação ao REGISTRO de procedimentos (data limite), não à apresentação APAC
       const apacsProximasVencimento = solicitacoesComApac
         .map((sol) => {
           try {
-            const tipoOci = sol.oci?.tipo;
-            const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
+            const tipoNome = sol.oci?.tipoOci?.nome ?? 'GERAL';
+            const dataFimValidadeApac = (tipoNome.includes('ONCOLOGICO') && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac!)
               : dataFimCompetencia(sol.competenciaFimApac!);
             const diasRestantes = calcularDiasRestantes(dataFimValidadeApac);
@@ -507,7 +499,7 @@ export class DashboardService {
               id: true,
               codigo: true,
               nome: true,
-              tipo: true,
+              tipoOci: { select: { nome: true } },
               procedimentos: {
                 where: { obrigatorio: true },
                 select: {
@@ -567,8 +559,8 @@ export class DashboardService {
               }
             }
 
-            const tipoOci = sol.oci?.tipo;
-            const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
+            const tipoOci = sol.oci?.tipoOci?.nome || 'GERAL';
+            const dataFimValidadeApac = (tipoOci.toUpperCase().includes('ONCOLOGICO') && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
               : dataFimCompetencia(sol.competenciaFimApac);
             dataFimValidadeApac.setHours(23, 59, 59, 999);

@@ -9,11 +9,11 @@ router.use(authenticate);
 // Listar OCIs
 router.get('/', async (req, res) => {
   try {
-    const { ativo, tipo, search } = req.query;
+    const { ativo, tipoId, search } = req.query;
 
     const where: any = {};
     if (ativo !== undefined) where.ativo = ativo === 'true';
-    if (tipo) where.tipo = tipo;
+    if (tipoId) where.tipoId = tipoId;
     if (search) {
       where.OR = [
         { nome: { contains: search as string, mode: 'insensitive' } },
@@ -72,12 +72,13 @@ router.post('/', async (req, res) => {
         ...dadosOci,
         procedimentos: procedimentos
           ? {
-              create: procedimentos
-            }
+            create: procedimentos
+          }
           : undefined
       },
       include: {
-        procedimentos: true
+        procedimentos: true,
+        tipoOci: { select: { nome: true } } // Added to include tipoOci name
       }
     });
 

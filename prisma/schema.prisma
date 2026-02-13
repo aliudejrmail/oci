@@ -11,9 +11,18 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum TipoOci {
-  GERAL
-  ONCOLOGICO
+model TipoOci {
+  id        String   @id @default(uuid())
+  nome      String   @unique
+  descricao String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ocis         Oci[]
+  solicitacoes SolicitacaoOci[]
+
+  @@map("tipos_oci")
 }
 
 enum StatusSolicitacao {
@@ -174,7 +183,8 @@ model Oci {
   codigo          String   @unique
   nome            String
   descricao       String?
-  tipo            TipoOci
+  tipoId          String
+  tipoOci         TipoOci  @relation(fields: [tipoId], references: [id])
   prazoMaximoDias Int // 60 para geral, 30 para oncológico
   ativo           Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -183,6 +193,7 @@ model Oci {
   solicitacoes  SolicitacaoOci[]
   procedimentos ProcedimentoOci[]
 
+  @@index([tipoId])
   @@map("ocis")
 }
 
@@ -294,7 +305,8 @@ model SolicitacaoOci {
   numeroProtocolo      String            @unique
   pacienteId           String
   ociId                String
-  tipo                 TipoOci
+  tipoId               String
+  tipoOci              TipoOci           @relation(fields: [tipoId], references: [id])
   dataSolicitacao      DateTime          @default(now())
   dataPrazo            DateTime // Calculado baseado no tipo (30d oncologia, 60d geral)
   dataConclusao        DateTime?
@@ -343,7 +355,7 @@ model SolicitacaoOci {
   @@index([dataPrazo])
   @@index([dataSolicitacao])
   @@index([status, dataSolicitacao(sort: Desc)])
-  @@index([tipo, status])
+  @@index([tipoId, status])
   @@index([unidadeOrigem])
   @@index([competenciaFimApac])
   @@index([deletedAt])

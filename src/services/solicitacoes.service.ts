@@ -1,4 +1,4 @@
-import { PrismaClient, StatusSolicitacao, TipoOci } from '@prisma/client';
+import { PrismaClient, StatusSolicitacao } from '@prisma/client';
 import { calcularDataPrazo, calcularDiasRestantes, competenciaDeData, competenciaDeDataUTC, determinarNivelAlerta, proximaCompetencia, calcularDecimoDiaUtilMesSeguinte, dataFimCompetencia, dataLimiteRegistroOncologico } from '../utils/date.utils';
 import { gerarNumeroProtocolo } from '../utils/gerador-protocolo.utils';
 import {
@@ -49,14 +49,17 @@ export class SolicitacoesService {
     // Buscar OCI para obter tipo e prazo
     const oci = await this.prisma.oci.findUnique({
       where: { id: data.ociId },
-      include: { procedimentos: { orderBy: { ordem: 'asc' } } }
-    });
+      include: {
+        procedimentos: { orderBy: { ordem: 'asc' } },
+        tipoOci: true
+      } as any
+    }) as any;
 
     if (!oci) {
       throw new Error('OCI não encontrada');
     }
 
-    const procedimentosSigtap = oci.procedimentos.filter((p) => p.codigoSigtap != null);
+    const procedimentosSigtap = (oci.procedimentos as any[]).filter((p) => p.codigoSigtap != null);
     if (procedimentosSigtap.length === 0) {
       throw new Error(
         'Esta OCI não possui procedimentos da tabela SIGTAP. Utilize apenas OCIs importadas da tabela SIGTAP (npm run importar:ocis-sigtap).'
@@ -68,7 +71,7 @@ export class SolicitacoesService {
 
     // Calcular data de prazo
     const dataSolicitacao = new Date();
-    const dataPrazo = calcularDataPrazo(oci.tipo, dataSolicitacao);
+    const dataPrazo = calcularDataPrazo(oci.tipoOci.nome, dataSolicitacao);
 
     // APAC: validade 2 competências (Portaria SAES 1640/1821)
     // Inicialmente, as competências serão calculadas quando o primeiro procedimento for executado
@@ -83,7 +86,7 @@ export class SolicitacoesService {
         numeroProtocolo,
         pacienteId: data.pacienteId,
         ociId: data.ociId,
-        tipo: oci.tipo,
+        tipoId: oci.tipoId,
         dataSolicitacao,
         dataPrazo,
         competenciaInicioApac,
@@ -94,8 +97,8 @@ export class SolicitacoesService {
         unidadeDestino: data.unidadeDestino,
         criadoPorId: data.criadoPorId,
         status: StatusSolicitacao.PENDENTE
-      }
-    });
+      } as any
+    }) as any;
 
     // Criar execuções apenas para procedimentos da tabela SIGTAP (codigoSigtap preenchido)
     if (procedimentosSigtap.length > 0) {
@@ -196,8 +199,8 @@ export class SolicitacoesService {
     if (solicitacao && solicitacao.competenciaFimApac) {
       try {
         const prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(solicitacao.competenciaFimApac);
-        const tipoOci = solicitacao.oci?.tipo ?? solicitacao.tipo;
-        const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && solicitacao.dataInicioValidadeApac)
+        const tipoNome = (solicitacao.oci as any)?.tipo?.nome || (solicitacao as any).tipo?.nome || 'GERAL';
+        const dataFimValidadeApac = (tipoNome.toUpperCase().includes('ONCOLOGICO') && solicitacao.dataInicioValidadeApac)
           ? dataLimiteRegistroOncologico(solicitacao.dataInicioValidadeApac, solicitacao.competenciaFimApac)
           : dataFimCompetencia(solicitacao.competenciaFimApac);
 
@@ -225,7 +228,7 @@ export class SolicitacoesService {
         }
 
         const diasRestantesRegistro = calcularDiasRestantes(dataFimValidadeApac);
-        const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, solicitacao.oci?.tipo || 'GERAL');
+        const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, tipoNome);
         const alertaEnriquecido = solicitacao.alerta
           ? { ...solicitacao.alerta, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, tipoPrazo }
           : { id: '', solicitacaoId: solicitacao.id, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, notificado: false, tipoPrazo };
@@ -365,7 +368,7 @@ export class SolicitacoesService {
 
   async listarSolicitacoes(filtros: {
     status?: StatusSolicitacao;
-    tipo?: TipoOci;
+    tipoId?: string;
     pacienteId?: string;
     ociId?: string;
     dataInicio?: Date;
@@ -425,7 +428,7 @@ export class SolicitacoesService {
           console.warn(`⚠️ Status inválido recebido: ${filtros.status}`);
         }
       }
-      if (filtros.tipo) where.tipo = filtros.tipo;
+      if (filtros.tipoId) where.tipoId = filtros.tipoId;
       if (filtros.pacienteId) where.pacienteId = filtros.pacienteId;
       if (filtros.ociId) where.ociId = filtros.ociId;
       if (filtros.dataInicio || filtros.dataFim) {
@@ -566,12 +569,12 @@ export class SolicitacoesService {
       const ociComProcedimentos = await this.prisma.oci.findUnique({
         where: { id: solicitacao.ociId },
         include: { procedimentos: { where: { obrigatorio: true }, orderBy: { ordem: 'asc' } } }
-      });
+      }) as any;
 
       const execucoes = await this.prisma.execucaoProcedimento.findMany({
         where: { solicitacaoId: id },
         include: { procedimento: true }
-      });
+      }) as any[];
 
       if (ociComProcedimentos && ociComProcedimentos.procedimentos.length > 0) {
         const procedimentosObrigatorios: ProcedimentoObrigatorio[] =
@@ -1094,7 +1097,8 @@ export class SolicitacoesService {
     }
 
     // Campos específicos para oncologia
-    if (solicitacao.oci.tipo === 'ONCOLOGICO') {
+    const tipoNome = (solicitacao.oci as any)?.tipoOci?.nome || 'GERAL';
+    if (tipoNome.toUpperCase().includes('ONCOLOGICO')) {
       if (data.dataDiagnosticoCitoHistopatologico !== undefined) {
         dadosAtualizacao.dataDiagnosticoCitoHistopatologico = data.dataDiagnosticoCitoHistopatologico
           ? new Date(data.dataDiagnosticoCitoHistopatologico)

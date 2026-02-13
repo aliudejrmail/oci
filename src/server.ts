@@ -19,6 +19,7 @@ import usuariosRoutes from './routes/usuarios.routes';
 import relatoriosRoutes from './routes/relatorios.routes';
 import sigtapRoutes from './routes/sigtap.routes';
 import auditoriaRoutes from './routes/auditoria.routes';
+import tiposOciRoutes from './routes/tiposOci.routes';
 
 // Importar Prisma
 import { prisma } from './database/prisma';
@@ -133,6 +134,7 @@ app.use('/api/relatorios', relatoriosRoutes);
 app.use('/api/sigtap', sigtapRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auditoria', auditoriaRoutes);
+app.use('/api/tipos-oci', tiposOciRoutes);
 
 // Em produção: servir frontend estático (SPA) e fallback para index.html
 if (isProduction) {

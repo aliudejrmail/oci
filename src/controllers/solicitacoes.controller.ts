@@ -51,7 +51,7 @@ export class SolicitacoesController {
       const authReq = req as AuthRequest;
       const {
         status,
-        tipo,
+        tipoId,
         pacienteId,
         ociId,
         dataInicio,
@@ -76,7 +76,7 @@ export class SolicitacoesController {
 
       const resultado = await service.listarSolicitacoes({
         status: status as any,
-        tipo: tipo as any,
+        tipoId: tipoId as any,
         pacienteId: pacienteId as string,
         ociId: ociId as string,
         dataInicio: dataInicio ? new Date(dataInicio as string) : undefined,

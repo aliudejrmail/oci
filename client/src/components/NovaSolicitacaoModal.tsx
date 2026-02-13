@@ -15,7 +15,8 @@ interface OciOption {
   id: string
   codigo: string
   nome: string
-  tipo: string
+  tipoId: string
+  tipo?: { nome: string }
 }
 
 interface UnidadeOption {
@@ -60,7 +61,7 @@ const formInicial = {
   unidadeOrigemId: '',
   unidadeDestino: '',
   unidadeDestinoId: '',
-   medicoSolicitanteId: '',
+  medicoSolicitanteId: '',
   observacoes: ''
 }
 
@@ -180,9 +181,9 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
 
   const ocisFiltrados = form.ociBusca.trim()
     ? ocis.filter((o) => {
-        const textoCompleto = `${o.codigo} - ${o.nome}`
-        return textoCompleto.toLowerCase().includes(form.ociBusca.trim().toLowerCase())
-      })
+      const textoCompleto = `${o.codigo} - ${o.nome}`
+      return textoCompleto.toLowerCase().includes(form.ociBusca.trim().toLowerCase())
+    })
     : ocis
 
   const selecionarOci = (o: OciOption) => {
@@ -236,7 +237,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
     if (!filesSelecionados || filesSelecionados.length === 0) {
       return
     }
-    
+
     const files = Array.from(filesSelecionados).filter((f) => {
       if (f.type !== 'application/pdf') {
         console.warn('Arquivo ignorado (não é PDF):', f.name)
@@ -244,14 +245,14 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
       }
       return true
     })
-    
+
     const sobra = MAX_ANEXOS - arquivosPdf.length
     if (sobra <= 0) {
       alert(`Você já selecionou o máximo de ${MAX_ANEXOS} arquivos.`)
       if (fileInputRef.current) fileInputRef.current.value = ''
       return
     }
-    
+
     const novos = files.slice(0, sobra)
     const limiteMb = MAX_ANEXOS_MB * 1024 * 1024
     const ok = novos.filter((f) => {
@@ -261,7 +262,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
       }
       return true
     })
-    
+
     if (ok.length > 0) {
       setArquivosPdf((prev) => {
         const atualizados = [...prev, ...ok]
@@ -269,7 +270,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
         return atualizados
       })
     }
-    
+
     // Limpar input para permitir selecionar o mesmo arquivo novamente se necessário
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -290,7 +291,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
     // Guardar arquivos antes de qualquer operação (evita problemas de closure/estado)
     const arquivosParaUpload = arquivosPdf.length > 0 ? [...arquivosPdf] : []
     console.log('📎 Arquivos para upload:', arquivosParaUpload.length, arquivosParaUpload.map(f => ({ nome: f.name, tamanho: f.size })))
-    
+
     try {
       const { data } = await api.post('/solicitacoes', {
         pacienteId: form.pacienteId,
@@ -302,15 +303,15 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
         medicoSolicitanteId: form.medicoSolicitanteId || undefined,
         observacoes: form.observacoes.trim() || undefined
       })
-      
+
       // Upload de anexos (apenas se houver arquivos válidos)
       let uploadSucesso = true
       let anexosEnviados = 0
-      
+
       if (data?.id && arquivosParaUpload.length > 0) {
         const arquivosValidos = arquivosParaUpload.filter(f => f instanceof File && f.size > 0 && f.name)
         console.log('📎 Arquivos válidos para upload:', arquivosValidos.length)
-        
+
         if (arquivosValidos.length > 0) {
           try {
             const formData = new FormData()
@@ -333,7 +334,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
           console.warn('⚠️ Nenhum arquivo válido encontrado para upload')
         }
       }
-      
+
       // Mensagem de sucesso (só se não houver erro de upload)
       if (uploadSucesso) {
         const msgSucesso = anexosEnviados > 0
@@ -341,15 +342,15 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
           : `Solicitação criada com sucesso! Protocolo: ${data.numeroProtocolo}`
         setSucesso(msgSucesso)
       }
-      
+
       // Limpar formulário apenas após sucesso completo
       setForm(formInicial)
       setArquivosPdf([])
       if (fileInputRef.current) fileInputRef.current.value = ''
-      
+
       // Atualizar lista na página principal
       onSuccess?.()
-      
+
       // Auto-limpar mensagem de sucesso após 5 segundos
       setTimeout(() => {
         setSucesso(null)
@@ -365,8 +366,8 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
 
   const profissionaisFiltrados = form.unidadeOrigemId
     ? profissionais.filter((p) =>
-        p.unidades?.some((u) => u.unidade?.id === form.unidadeOrigemId)
-      )
+      p.unidades?.some((u) => u.unidade?.id === form.unidadeOrigemId)
+    )
     : profissionais
 
   if (!open) return null
@@ -483,7 +484,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                   <div className="absolute z-10 w-full mt-0.5 bg-white border border-gray-200 rounded shadow-lg max-h-40 overflow-y-auto">
                     {ocisFiltrados.length > 0 ? (
                       ocisFiltrados.map((o) => {
-                        const descricaoCompleta = `${o.codigo} - ${o.nome} (${o.tipo === 'GERAL' ? 'Geral' : 'Oncológico'})`
+                        const descricaoCompleta = `${o.codigo} - ${o.nome} (${o.tipo?.nome || 'Geral'})`
                         return (
                           <button
                             key={o.id}
@@ -493,7 +494,7 @@ export default function NovaSolicitacaoModal({ open, onClose, onSuccess }: NovaS
                             className="w-full px-2 py-1.5 text-left text-xs hover:bg-gray-50 flex justify-between gap-1"
                           >
                             <span className="truncate">{o.codigo} - {o.nome}</span>
-                            <span className="text-gray-500 shrink-0">{o.tipo === 'GERAL' ? 'Geral' : 'Oncológico'}</span>
+                            <span className="text-gray-500 shrink-0">{o.tipo?.nome || 'Geral'}</span>
                           </button>
                         )
                       })
