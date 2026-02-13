@@ -69,8 +69,11 @@ export default function Layout() {
           ? menuAtendente
           : [
             ...menuCompleto,
-            ...(usuario?.tipo === 'ADMIN' ? [{ path: '/importar-sigtap', label: 'Importar SIGTAP', icon: FileArchive }] : []),
-            ...(usuario?.tipo === 'ADMIN' ? [{ path: '/auditoria', label: 'Histórico e Auditoria', icon: HistoryIcon }] : []),
+            ...(usuario?.tipo === 'ADMIN' ? [
+              { path: '/importar-sigtap', label: 'Importar SIGTAP', icon: FileArchive },
+              { path: '/tipos-oci', label: 'Tipos de OCI', icon: Package },
+              { path: '/auditoria', label: 'Histórico e Auditoria', icon: HistoryIcon }
+            ] : []),
             ...(usuario?.tipo === 'ADMIN' || usuario?.tipo === 'GESTOR' ? [{ path: '/usuarios', label: 'Usuários e Perfis', icon: UserCog }] : [])
           ]
 

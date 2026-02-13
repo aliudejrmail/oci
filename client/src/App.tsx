@@ -12,6 +12,7 @@ import Usuarios from './pages/Usuarios'
 import Relatorios from './pages/Relatorios'
 import ImportarSigtap from './pages/ImportarSigtap'
 import Auditoria from './pages/Auditoria'
+import TiposOci from './pages/TiposOci'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -80,6 +81,11 @@ function App() {
             <Route path="auditoria" element={
               <ProtectedRoute roles={['ADMIN']}>
                 <Auditoria />
+              </ProtectedRoute>
+            } />
+            <Route path="tipos-oci" element={
+              <ProtectedRoute roles={['ADMIN']}>
+                <TiposOci />
               </ProtectedRoute>
             } />
           </Route>
