@@ -203,7 +203,6 @@ export class DashboardService {
         if (sol.competenciaFimApac) {
           // Oncológico: primeiro critério 30 dias desde a consulta; considera-se também 2 competências
           const tipoNome = (sol.oci as any)?.tipoOci?.nome ?? 'GERAL';
-          const prazo = tipoNome.toUpperCase().includes('ONCOLOGICO') ? 30 : 60;
           dataFimValidadeApac = (tipoNome.includes('ONCOLOGICO') && sol.dataInicioValidadeApac)
             ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
             : dataFimCompetencia(sol.competenciaFimApac);
@@ -228,7 +227,7 @@ export class DashboardService {
           // Dias restantes: SEMPRE em relação ao REGISTRO/REALIZAÇÃO de procedimentos (ex: 31/01), NUNCA à apresentação APAC (5º dia útil)
           diasRestantesExibir = calcularDiasRestantes(dataFimValidadeApac);
           // Recalcular nivelAlerta com base nos dias até o registro de procedimentos
-          alerta = { ...alerta, nivelAlerta: determinarNivelAlerta(diasRestantesExibir, sol.oci?.tipo?.nome || 'GERAL') };
+          alerta = { ...alerta, nivelAlerta: determinarNivelAlerta(diasRestantesExibir, (sol.oci as any)?.tipoOci?.nome || 'GERAL') };
         } else {
           prazoApresentacaoApac = sol.dataPrazo ? new Date(sol.dataPrazo) : null;
         }
@@ -290,7 +289,7 @@ export class DashboardService {
 
       const alertas = execucoesAnatomo.map((exec: any) => {
         const dataColeta = exec.dataColetaMaterialBiopsia!;
-        const tipoNome = (exec.solicitacao.oci?.tipo?.nome ?? 'GERAL');
+        const tipoNome = (exec.solicitacao.oci as any)?.tipoOci?.nome ?? 'GERAL';
         const dataConsulta = (exec.solicitacao as any).dataInicioValidadeApac as Date | null | undefined;
         const prazoResultado = tipoNome.includes('ONCOLOGICO') && dataConsulta
           ? calcularPrazoResultadoBiopsiaOncologico(dataConsulta)
@@ -626,7 +625,7 @@ export class DashboardService {
               id: true,
               codigo: true,
               nome: true,
-              tipo: true
+              tipoOci: true
             }
           }
         },
@@ -656,7 +655,7 @@ export class DashboardService {
               id: true,
               codigo: true,
               nome: true,
-              tipo: true
+              tipoOci: true
             }
           }
         },

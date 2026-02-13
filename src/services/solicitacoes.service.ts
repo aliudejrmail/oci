@@ -199,7 +199,7 @@ export class SolicitacoesService {
     if (solicitacao && solicitacao.competenciaFimApac) {
       try {
         const prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(solicitacao.competenciaFimApac);
-        const tipoNome = (solicitacao.oci as any)?.tipo?.nome || (solicitacao as any).tipo?.nome || 'GERAL';
+        const tipoNome = (solicitacao.oci as any)?.tipoOci?.nome || (solicitacao as any).tipoOci?.nome || 'GERAL';
         const dataFimValidadeApac = (tipoNome.toUpperCase().includes('ONCOLOGICO') && solicitacao.dataInicioValidadeApac)
           ? dataLimiteRegistroOncologico(solicitacao.dataInicioValidadeApac, solicitacao.competenciaFimApac)
           : dataFimCompetencia(solicitacao.competenciaFimApac);
@@ -298,16 +298,17 @@ export class SolicitacoesService {
 
       // Recalcular data de prazo conforme novo tipo de OCI
       const dataSolicitacao = solicitacaoAtual.dataSolicitacao;
-      const dataPrazo = calcularDataPrazo(novaOci.tipo, dataSolicitacao);
+      const tipoOciNome = (novaOci as any).tipoOci?.nome || 'GERAL';
+      const dataPrazo = calcularDataPrazo(tipoOciNome, dataSolicitacao);
       const diasRestantes = calcularDiasRestantes(dataPrazo);
-      const nivelAlerta = determinarNivelAlerta(diasRestantes, novaOci.tipo);
+      const nivelAlerta = determinarNivelAlerta(diasRestantes, tipoOciNome);
 
       // Atualizar solicitação (ociId, tipo, dataPrazo e demais campos)
       await this.prisma.solicitacaoOci.update({
         where: { id },
         data: {
           ociId: data.ociId,
-          tipo: novaOci.tipo,
+          tipoId: novaOci.tipoId,
           dataPrazo,
           observacoes: data.observacoes ?? solicitacaoAtual.observacoes,
           unidadeOrigem: data.unidadeOrigem ?? solicitacaoAtual.unidadeOrigem,
@@ -460,7 +461,7 @@ export class SolicitacoesService {
                 id: true,
                 codigo: true,
                 nome: true,
-                tipo: true
+                tipoOci: true
               }
             },
             alerta: true,
@@ -484,12 +485,12 @@ export class SolicitacoesService {
         try {
           if (sol.competenciaFimApac) {
             const prazoApresentacaoApac = calcularDecimoDiaUtilMesSeguinte(sol.competenciaFimApac);
-            const tipoOci = sol.oci?.tipo ?? sol.tipo;
+            const tipoOci = sol.oci?.tipoOci?.nome ?? (sol as any).tipoOci?.nome;
             const dataFimValidadeApac = (tipoOci === 'ONCOLOGICO' && sol.dataInicioValidadeApac)
               ? dataLimiteRegistroOncologico(sol.dataInicioValidadeApac, sol.competenciaFimApac)
               : dataFimCompetencia(sol.competenciaFimApac);
             const diasRestantesRegistro = calcularDiasRestantes(dataFimValidadeApac);
-            const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, sol.oci?.tipo || 'GERAL');
+            const nivelAlertaRegistro = determinarNivelAlerta(diasRestantesRegistro, tipoOci || 'GERAL');
             const alertaEnriquecido = sol.alerta
               ? { ...sol.alerta, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro }
               : { id: '', solicitacaoId: sol.id, diasRestantes: diasRestantesRegistro, nivelAlerta: nivelAlertaRegistro, notificado: false };
@@ -578,7 +579,7 @@ export class SolicitacoesService {
 
       if (ociComProcedimentos && ociComProcedimentos.procedimentos.length > 0) {
         const procedimentosObrigatorios: ProcedimentoObrigatorio[] =
-          ociComProcedimentos.procedimentos.map((p) => ({
+          ociComProcedimentos.procedimentos.map((p: any) => ({
             id: p.id,
             codigo: p.codigo,
             nome: p.nome
@@ -638,7 +639,7 @@ export class SolicitacoesService {
   async atualizarAlertaPrazo(solicitacaoId: string) {
     const solicitacao = await this.prisma.solicitacaoOci.findUnique({
       where: { id: solicitacaoId },
-      include: { oci: true }
+      include: { oci: { include: { tipoOci: true } } }
     });
 
     if (!solicitacao || solicitacao.status === StatusSolicitacao.CONCLUIDA) {
@@ -651,8 +652,8 @@ export class SolicitacoesService {
     let diasRestantes: number;
 
     if (solicitacao.competenciaFimApac) {
-      const tipoOci = solicitacao.oci.tipo as 'GERAL' | 'ONCOLOGICO';
-      const dataFimValidadeApac = tipoOci === 'ONCOLOGICO' && solicitacao.dataInicioValidadeApac
+      const tipoOci = (solicitacao.oci as any).tipoOci?.nome || 'GERAL';
+      const dataFimValidadeApac = (tipoOci as string).toUpperCase().includes('ONCOLOGICO') && solicitacao.dataInicioValidadeApac
         ? dataLimiteRegistroOncologico(solicitacao.dataInicioValidadeApac, solicitacao.competenciaFimApac)
         : dataFimCompetencia(solicitacao.competenciaFimApac);
       diasRestantes = calcularDiasRestantes(dataFimValidadeApac);
@@ -661,7 +662,7 @@ export class SolicitacoesService {
       diasRestantes = calcularDiasRestantes(solicitacao.dataPrazo);
     }
 
-    const nivelAlerta = determinarNivelAlerta(diasRestantes, solicitacao.oci.tipo);
+    const nivelAlerta = determinarNivelAlerta(diasRestantes, (solicitacao.oci as any).tipoOci?.nome || 'GERAL');
 
     await this.prisma.alertaPrazo.upsert({
       where: { solicitacaoId },
@@ -812,7 +813,7 @@ export class SolicitacoesService {
     // Recalcular sempre que uma execução é atualizada (marcada ou desmarcada)
     const sol = await this.prisma.solicitacaoOci.findUnique({
       where: { id: execucao.solicitacaoId },
-      include: { execucoes: true }
+      include: { execucoes: true, tipoOci: true }
     });
     if (!sol) return execucao;
 
@@ -855,7 +856,7 @@ export class SolicitacoesService {
       const dataPrimeiraStr = `${anoP}-${mesP}-${diaP}`;
       const competenciaPrimeiroProcedimento = competenciaDeData(dataPrimeiraStr);
       atualizar.competenciaInicioApac = competenciaPrimeiroProcedimento;
-      const tipoOci = sol.tipo as 'GERAL' | 'ONCOLOGICO';
+      const tipoOci = (sol as any).tipoOci?.nome || 'GERAL';
       // Oncológico: quando o prazo de 30 dias cai no mesmo mês da consulta, competência de apresentação = mesma competência (todos os procedimentos no mesmo mês)
       // Geral: sempre 2 competências (1ª = mês do 1º proc., 2ª = mês seguinte)
       let competenciaFim: string;
