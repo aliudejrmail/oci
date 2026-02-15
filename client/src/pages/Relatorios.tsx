@@ -20,7 +20,11 @@ const STATUS_OPCOES = [
   { valor: 'CANCELADA', label: 'Cancelada' }
 ]
 
-// Removido TIPO_OCI_OPCOES fixo
+const TIPO_OCI_OPCOES = [
+  { valor: '', label: 'Todos' },
+  { valor: 'GERAL', label: 'Geral' },
+  { valor: 'ONCOLOGICO', label: 'Oncológico' }
+]
 
 export default function Relatorios() {
   const { usuario } = useAuth()
@@ -36,7 +40,6 @@ export default function Relatorios() {
   const [carregandoOpcoes, setCarregandoOpcoes] = useState(true)
   const [resultado, setResultado] = useState<Record<string, unknown> | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [tiposOci, setTiposOci] = useState<Array<{ id: string; nome: string }>>([])
 
   useEffect(() => {
     api.get('/relatorios/opcoes')
@@ -49,10 +52,6 @@ export default function Relatorios() {
     api.get('/unidades?ativo=true')
       .then((res) => setUnidades(Array.isArray(res.data) ? res.data : []))
       .catch(() => setUnidades([]))
-
-    api.get('/tipos-oci')
-      .then((res) => setTiposOci(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setTiposOci([]))
   }, [])
 
   const gerarRelatorio = async (e: React.FormEvent) => {
@@ -74,7 +73,7 @@ export default function Relatorios() {
       if (unidadeId) {
         params.append('unidadeId', unidadeId)
       }
-      if (tipoOci) params.append('tipoOciId', tipoOci)
+      if (tipoOci) params.append('tipoOci', tipoOci)
       const res = await api.get(`/relatorios?${params.toString()}`)
       setResultado(res.data as Record<string, unknown>)
     } catch (err: unknown) {
@@ -204,11 +203,10 @@ export default function Relatorios() {
             <select
               value={tipoOci}
               onChange={(e) => setTipoOci(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">Todos os tipos de OCI</option>
-              {tiposOci.map((t) => (
-                <option key={t.id} value={t.id}>{t.nome}</option>
+              {TIPO_OCI_OPCOES.map((t) => (
+                <option key={t.valor || 'todos'} value={t.valor}>{t.label}</option>
               ))}
             </select>
           </div>
@@ -267,7 +265,20 @@ export default function Relatorios() {
               {tipo === 'por-periodo' && Array.isArray((resultado as { solicitacoes?: unknown[] }).solicitacoes) && (
                 <button
                   type="button"
-                  onClick={() => exportarCsv((resultado as { solicitacoes: unknown[] }).solicitacoes, 'solicitacoes')}
+                  onClick={() => {
+                    const solicitacoes = (resultado as { solicitacoes: any[] }).solicitacoes;
+                    const dadosExport = solicitacoes.map(s => ({
+                      'Protocolo': s.numeroProtocolo,
+                      'Paciente': s.paciente?.nome,
+                      'CPF': s.paciente?.cpf,
+                      'OCI': s.oci?.nome,
+                      'Unidade Solicitante': s.unidadeOrigem?.nome || s.unidadeOrigem,
+                      'Unidade Executante': s.unidadeDestino?.nome || s.unidadeDestino,
+                      'Status': s.status,
+                      'Data Solicitação': s.dataSolicitacao ? formatarData(s.dataSolicitacao) : ''
+                    }));
+                    exportarCsv(dadosExport, 'solicitacoes');
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium transition-colors"
                 >
                   <Download size={16} />
@@ -277,7 +288,20 @@ export default function Relatorios() {
               {tipo === 'procedimentos-executados' && Array.isArray((resultado as { execucoes?: unknown[] }).execucoes) && (
                 <button
                   type="button"
-                  onClick={() => exportarCsv((resultado as { execucoes: unknown[] }).execucoes, 'procedimentos-executados')}
+                  onClick={() => {
+                    const execucoes = (resultado as { execucoes: any[] }).execucoes;
+                    const dadosExport = execucoes.map(e => ({
+                      'Protocolo': e.solicitacao?.numeroProtocolo,
+                      'Paciente': e.solicitacao?.paciente?.nome,
+                      'Procedimento': e.procedimento?.nome,
+                      'Código Sigtap': e.procedimento?.codigo,
+                      'Unidade Executante': e.unidadeExecutante?.nome || e.unidadeExecutante,
+                      'Executante': e.profissional,
+                      'Data Execução': e.dataExecucao ? formatarData(e.dataExecucao) : '',
+                      'Status': e.status
+                    }));
+                    exportarCsv(dadosExport, 'procedimentos-executados');
+                  }}
                   className="inline-flex items-center gap-2 px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 text-sm font-medium transition-colors"
                 >
                   <Download size={16} />
@@ -371,6 +395,8 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                 <th className="text-left px-3 py-2">Protocolo</th>
                 <th className="text-left px-3 py-2">Paciente</th>
                 <th className="text-left px-3 py-2">OCI</th>
+                <th className="text-left px-3 py-2">Unidade Solicitante</th>
+                <th className="text-left px-3 py-2">Unidade Executante</th>
                 <th className="text-left px-3 py-2">Status</th>
                 <th className="text-left px-3 py-2">Data solicitação</th>
               </tr>
@@ -381,6 +407,8 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
                   <td className="px-3 py-2 font-mono">{String(s.numeroProtocolo ?? '')}</td>
                   <td className="px-3 py-2">{String((s.paciente as { nome?: string })?.nome ?? '')}</td>
                   <td className="px-3 py-2">{String((s.oci as { nome?: string })?.nome ?? '')}</td>
+                  <td className="px-3 py-2">{String((s.unidadeOrigem as { nome?: string })?.nome ?? s.unidadeOrigem ?? '-')}</td>
+                  <td className="px-3 py-2">{String((s.unidadeDestino as { nome?: string })?.nome ?? s.unidadeDestino ?? '-')}</td>
                   <td className="px-3 py-2">{String(s.status ?? '')}</td>
                   <td className="px-3 py-2">{s.dataSolicitacao ? formatarData(s.dataSolicitacao as string) : '-'}</td>
                 </tr>
@@ -410,28 +438,6 @@ function ResultadoRelatorio({ tipo, resultado }: { tipo: string; resultado: Reco
             <tr key={i} className="border-t border-gray-100">
               <td className="px-3 py-2">{String(row[chave] ?? '')}</td>
               <td className="px-3 py-2 text-right font-medium">{Number(row.quantidade)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )
-  }
-
-  if (tipo === 'por-oci') {
-    const lista = (resultado as unknown as Array<{ ociNome: string; quantidade: number }>) ?? []
-    return (
-      <table className="w-full text-sm border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="text-left px-3 py-2">Oferta de Cuidado (OCI)</th>
-            <th className="text-right px-3 py-2">Quantidade</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lista.map((row, i) => (
-            <tr key={i} className="border-t border-gray-100">
-              <td className="px-3 py-2">{row.ociNome ?? '-'}</td>
-              <td className="px-3 py-2 text-right font-medium">{row.quantidade}</td>
             </tr>
           ))}
         </tbody>

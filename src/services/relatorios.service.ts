@@ -77,8 +77,32 @@ export class RelatoriosService {
         medicoSolicitante: { select: { nome: true, cns: true } }
       } as any
     });
+
     const total = await this.prisma.solicitacaoOci.count({ where });
-    return { total, solicitacoes, limite };
+
+    // Enriquecer com nomes das unidades para exportação/visualização
+    const unidadeIds = new Set<string>();
+    solicitacoes.forEach((s: any) => {
+      if (s.unidadeOrigemId) unidadeIds.add(s.unidadeOrigemId);
+      if (s.unidadeDestinoId) unidadeIds.add(s.unidadeDestinoId);
+    });
+
+    const unidades = unidadeIds.size > 0
+      ? await this.prisma.unidadeSaude.findMany({
+        where: { id: { in: Array.from(unidadeIds) } },
+        select: { id: true, nome: true, cnes: true }
+      })
+      : [];
+
+    const mapUnidades = Object.fromEntries(unidades.map(u => [u.id, `${u.cnes} - ${u.nome}`]));
+
+    const solicitacoesFormatadas = solicitacoes.map((s: any) => ({
+      ...s,
+      unidadeOrigem: s.unidadeOrigemId ? { nome: mapUnidades[s.unidadeOrigemId] ?? s.unidadeOrigemId } : null,
+      unidadeDestino: s.unidadeDestinoId ? { nome: mapUnidades[s.unidadeDestinoId] ?? s.unidadeDestinoId } : null
+    }));
+
+    return { total, solicitacoes: solicitacoesFormatadas, limite };
   }
 
   /** Contagem por status */

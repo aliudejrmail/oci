@@ -70,7 +70,7 @@ npm run dev
    - Backend: http://localhost:3001
    - Login padrão: `admin@oci.sus` / `admin123`
 
-## 📁 Estrutura do Projeto
+## � Estrutura do Projeto
 
 ```
 oci/

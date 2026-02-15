@@ -6,23 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model TipoOci {
-  id        String   @id @default(uuid())
-  nome      String   @unique
-  descricao String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  ocis         Oci[]
-  solicitacoes SolicitacaoOci[]
-
-  @@map("tipos_oci")
+enum TipoOci {
+  GERAL
+  ONCOLOGICO
 }
 
 enum StatusSolicitacao {
@@ -41,36 +31,24 @@ enum TipoProcedimento {
   OUTRO
 }
 
-enum TipoUsuario {
-  ADMIN
-  GESTOR
-  ATENDENTE
-  EXECUTANTE
-  AUTORIZADOR
-  SOLICITANTE
-}
-
 model Usuario {
   id                   String   @id @default(uuid())
   nome                 String
   email                String   @unique
   senha                String
-  tipo                 TipoUsuario
+  tipo                 String   // ADMIN, GESTOR, ATENDENTE, EXECUTANTE, AUTORIZADOR, SOLICITANTE
   ativo                Boolean  @default(true)
   unidadeId            String?  // Unidade de lotação/vinculação (qualquer perfil)
   unidadeExecutanteId  String?  // Unidade onde o executante atua (só para tipo EXECUTANTE)
-  tentativasLogin      Int      @default(0)
-  bloqueadoEm          DateTime?
-  ultimoAcesso         DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   solicitacoesCriadas     SolicitacaoOci[]     @relation("CriadoPor")
   solicitacoesAtualizadas SolicitacaoOci[]     @relation("AtualizadoPor")
   execucoesAgendadas     ExecucaoProcedimento[] @relation("Executante")
-  auditorias              Auditoria[]
   unidade                UnidadeSaude?         @relation("Unidade", fields: [unidadeId], references: [id], onDelete: SetNull)
   unidadeExecutante      UnidadeSaude?         @relation("UnidadeExecutante", fields: [unidadeExecutanteId], references: [id], onDelete: SetNull)
+  tentativasLogin        Int      @default(0)
 
   @@index([unidadeId])
   @@index([unidadeExecutanteId])
@@ -116,12 +94,8 @@ model UnidadeSaude {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  usuarios              Usuario[] @relation("Unidade")           // Usuários vinculados à unidade (lotação)
-  usuariosExecutantes   Usuario[] @relation("UnidadeExecutante") // Executantes que atuam nesta unidade
-  solicitacoesOrigem   SolicitacaoOci[] @relation("UnidadeOrigem")
-  solicitacoesDestino  SolicitacaoOci[] @relation("UnidadeDestino")
-  execucoesExecutadas  ExecucaoProcedimento[] @relation("UnidadeExecutora")
-  profissionais        ProfissionalUnidade[] @relation("ProfissionalUnidades")
+  usuarios           Usuario[] @relation("Unidade")           // Usuários vinculados à unidade (lotação)
+  usuariosExecutantes Usuario[] @relation("UnidadeExecutante") // Executantes que atuam nesta unidade
 
   @@index([nome])
   @@index([executante])
@@ -129,53 +103,18 @@ model UnidadeSaude {
   @@map("unidades_saude")
 }
 
-model Cbo {
-  id        String   @id @default(uuid())
-  codigo    String   @unique // Ex: 225120, 225250
-  descricao String   // Ex: MEDICO CARDIOLOGISTA
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  profissionais Profissional[]
-
-  @@index([codigo])
-  @@map("cbos")
-}
-
 model Profissional {
   id        String   @id @default(uuid())
   nome      String
   cns       String   @unique // Cartão Nacional de Saúde (15 dígitos)
-  cboId     String?  // Relacionamento com tabela CBO
-  cbo       String?  // Código CBO legado (manter temporariamente)
+  cbo       String   // Código Brasileiro de Ocupação (ex: 2234-05)
   ativo     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  unidades      ProfissionalUnidade[]
-  cboRelacao    Cbo?                  @relation(fields: [cboId], references: [id], onDelete: SetNull)
-  solicitacoesMedicoSolicitante SolicitacaoOci[] @relation("SolicitacaoMedicoSolicitante")
-
   @@index([nome])
   @@index([cns])
-  @@index([cboId])
   @@map("profissionais")
-}
-
-model ProfissionalUnidade {
-  id             String   @id @default(uuid())
-  profissionalId String
-  unidadeId      String
-  createdAt      DateTime @default(now())
-
-  profissional Profissional @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
-  unidade      UnidadeSaude @relation("ProfissionalUnidades", fields: [unidadeId], references: [id], onDelete: Cascade)
-
-  @@unique([profissionalId, unidadeId])
-  @@index([profissionalId])
-  @@index([unidadeId])
-  @@map("profissionais_unidades")
 }
 
 model Oci {
@@ -183,8 +122,7 @@ model Oci {
   codigo          String   @unique
   nome            String
   descricao       String?
-  tipoId          String
-  tipoOci         TipoOci  @relation(fields: [tipoId], references: [id])
+  tipo            TipoOci
   prazoMaximoDias Int // 60 para geral, 30 para oncológico
   ativo           Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -193,7 +131,6 @@ model Oci {
   solicitacoes  SolicitacaoOci[]
   procedimentos ProcedimentoOci[]
 
-  @@index([tipoId])
   @@map("ocis")
 }
 
@@ -215,7 +152,6 @@ model ProcedimentoOci {
   compatibilidadeCid CompatibilidadeCid[]
   compatibilidadeCbo CompatibilidadeCbo[]
 
-  @@unique([ociId, codigo])
   @@map("procedimentos_oci")
 }
 
@@ -305,19 +241,14 @@ model SolicitacaoOci {
   numeroProtocolo      String            @unique
   pacienteId           String
   ociId                String
-  tipoId               String
-  tipoOci              TipoOci           @relation(fields: [tipoId], references: [id])
+  tipo                 TipoOci
   dataSolicitacao      DateTime          @default(now())
   dataPrazo            DateTime // Calculado baseado no tipo (30d oncologia, 60d geral)
   dataConclusao        DateTime?
   status               StatusSolicitacao @default(PENDENTE)
   observacoes          String?
-  unidadeOrigem        String // UBS que solicitou (legado/display)
-  unidadeDestino       String? // Unidade que executará (legado/display)
-  unidadeOrigemId      String? // FK para UnidadeSaude
-  unidadeDestinoId     String? // FK para UnidadeSaude
-  medicoSolicitanteId  String? // FK para Profissional (médico que solicitou)
-  deletedAt            DateTime? // Soft delete para auditoria
+  unidadeOrigem        String // UBS que solicitou
+  unidadeDestino       String? // Unidade que executará
   // APAC - validade 2 competências (Portaria SAES 1640/2024, Manual PMAE/OCI)
   competenciaInicioApac    String?  // YYYYMM ex.: 202601
   competenciaFimApac       String?  // YYYYMM ex.: 202602
@@ -340,26 +271,17 @@ model SolicitacaoOci {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 
-  paciente         Paciente               @relation(fields: [pacienteId], references: [id])
-  oci              Oci                    @relation(fields: [ociId], references: [id])
-  criadoPor        Usuario                @relation("CriadoPor", fields: [criadoPorId], references: [id])
-  atualizadoPor    Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
-  unidadeOrigemRef UnidadeSaude?          @relation("UnidadeOrigem", fields: [unidadeOrigemId], references: [id], onDelete: SetNull)
-  unidadeDestinoRef UnidadeSaude?         @relation("UnidadeDestino", fields: [unidadeDestinoId], references: [id], onDelete: SetNull)
-  medicoSolicitante Profissional?         @relation("SolicitacaoMedicoSolicitante", fields: [medicoSolicitanteId], references: [id], onDelete: SetNull)
-  execucoes        ExecucaoProcedimento[]
-  alerta           AlertaPrazo?           @relation("Alertas")
-  anexos           AnexoSolicitacao[]
+  paciente      Paciente               @relation(fields: [pacienteId], references: [id])
+  oci           Oci                    @relation(fields: [ociId], references: [id])
+  criadoPor     Usuario                @relation("CriadoPor", fields: [criadoPorId], references: [id])
+  atualizadoPor Usuario?               @relation("AtualizadoPor", fields: [atualizadoPorId], references: [id])
+  execucoes     ExecucaoProcedimento[]
+  alerta        AlertaPrazo?           @relation("Alertas")
+  anexos        AnexoSolicitacao[]
 
   @@index([status])
   @@index([dataPrazo])
   @@index([dataSolicitacao])
-  @@index([status, dataSolicitacao(sort: Desc)])
-  @@index([tipoId, status])
-  @@index([unidadeOrigem])
-  @@index([competenciaFimApac])
-  @@index([deletedAt])
-  @@index([medicoSolicitanteId])
   @@map("solicitacoes_oci")
 }
 
@@ -378,44 +300,31 @@ model AnexoSolicitacao {
   @@map("anexos_solicitacoes")
 }
 
-model StatusExecucao {
-  codigo    String   @id
-  descricao String?
-  execucoes ExecucaoProcedimento[]
-
-  @@map("status_execucao")
-}
-
 model ExecucaoProcedimento {
   id                         String    @id @default(uuid())
   solicitacaoId              String
   procedimentoId             String
   dataAgendamento            DateTime?
   dataExecucao               DateTime?
-  status                     String   // FK: PENDENTE, AGENDADO, REALIZADO, CANCELADO, DISPENSADO
+  status                     String   // PENDENTE, AGENDADO, EXECUTADO, CANCELADO, DISPENSADO
   observacoes                String?
   profissional               String?  // Nome do profissional que executou
-  unidadeExecutora           String?  // Legado/display
-  unidadeExecutoraId         String?  // FK para UnidadeSaude
+  unidadeExecutora           String?
   executanteId               String?  // Usuário executante (tipo EXECUTANTE) para quem foi agendado
-  // Biópsia: só pode ser REALIZADO após registro do resultado
+  // Biópsia: só pode ser EXECUTADO após registro do resultado
   resultadoBiopsia           String?
   dataColetaMaterialBiopsia  DateTime?
   dataRegistroResultadoBiopsia DateTime?
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
-  solicitacao       SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
-  procedimento     ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
-  executante       Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
-  unidadeExecutoraRef UnidadeSaude? @relation("UnidadeExecutora", fields: [unidadeExecutoraId], references: [id], onDelete: SetNull)
-  statusExecucao   StatusExecucao @relation(fields: [status], references: [codigo], onDelete: Restrict)
+  solicitacao  SolicitacaoOci  @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  procedimento ProcedimentoOci @relation(fields: [procedimentoId], references: [id])
+  executante   Usuario?        @relation("Executante", fields: [executanteId], references: [id], onDelete: SetNull)
 
   @@index([solicitacaoId])
   @@index([status])
   @@index([executanteId])
-  @@index([unidadeExecutora])
-  @@index([solicitacaoId, status])
   @@map("execucoes_procedimentos")
 }
 
@@ -434,24 +343,4 @@ model AlertaPrazo {
   @@index([nivelAlerta])
   @@index([notificado])
   @@map("alertas_prazos")
-}
-
-model Auditoria {
-  id        String   @id @default(uuid())
-  usuarioId String?
-  acao      String   // Ex: LOGIN, CRIACAO_SOLICITACAO, ALTERACAO_STATUS, EXCLUSAO
-  entidade  String   // Ex: SolicitacaoOci, Paciente, Usuario
-  entidadeId String?
-  detalhes  String?  // JSON ou texto descrevendo a mudança
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
-
-  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
-
-  @@index([usuarioId])
-  @@index([acao])
-  @@index([entidade, entidadeId])
-  @@index([createdAt])
-  @@map("auditoria")
 }

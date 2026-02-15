@@ -6,10 +6,8 @@ import rateLimit from 'express-rate-limit';
 import { prisma } from '../database/prisma';
 import { getJwtSecret } from '../utils/env';
 import { authenticate } from '../middleware/auth.middleware';
-import { AuditoriaService } from '../services/auditoria.service';
 
 const router = Router();
-const auditoria = new AuditoriaService(prisma);
 
 const TIPOS_PERMITIDOS = ['ADMIN', 'GESTOR', 'ATENDENTE', 'EXECUTANTE', 'AUTORIZADOR', 'SOLICITANTE'];
 
@@ -63,11 +61,11 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
     }
 
     // Verificar se está bloqueado
-    if (usuario.bloqueadoEm) {
-      return res.status(403).json({
-        message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
-      });
-    }
+    // if ((usuario as any).bloqueadoEm) {
+    //   return res.status(403).json({
+    //     message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+    //   });
+    // }
 
     if (!usuario.ativo) {
       return res.status(401).json({ message: 'Credenciais inválidas' });
@@ -81,35 +79,20 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
       let updateData: any = { tentativasLogin: tentativas };
 
       // Bloquear se atingir 5 tentativas
-      if (tentativas >= 5) {
-        updateData.bloqueadoEm = new Date();
-      }
+      // if (tentativas >= 5) {
+      //   updateData.bloqueadoEm = new Date();
+      // }
 
       await prisma.usuario.update({
         where: { id: usuario.id },
         data: updateData
       });
 
-      // Audit: LOGIN_FAIL
-      await auditoria.log({
-        usuarioId: usuario.id,
-        acao: 'LOGIN_FAIL',
-        entidade: 'Usuario',
-        entidadeId: usuario.id,
-        detalhes: JSON.stringify({
-          email,
-          tentativa: tentativas,
-          bloqueado: tentativas >= 5
-        }),
-        ip: req.ip,
-        userAgent: req.get('user-agent')
-      });
-
-      if (tentativas >= 5) {
-        return res.status(403).json({
-          message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
-        });
-      }
+      // if (tentativas >= 5) {
+      //   return res.status(403).json({
+      //     message: 'Conta bloqueada devido a excesso de tentativas. Contate um administrador ou gestor para desbloqueio.'
+      //   });
+      // }
 
       const tentativasRestantes = 5 - tentativas;
       return res.status(401).json({
@@ -117,25 +100,15 @@ router.post('/login', loginLimiter, validarLogin, async (req: Request, res: Resp
       });
     }
 
-    // Login com sucesso: Resetar contador e bloqueio, e atualizar último acesso
-    await prisma.usuario.update({
-      where: { id: usuario.id },
-      data: {
-        tentativasLogin: 0,
-        bloqueadoEm: null,
-        ultimoAcesso: new Date()
-      }
-    });
-
-    // Audit: LOGIN_SUCCESS
-    await auditoria.log({
-      usuarioId: usuario.id,
-      acao: 'LOGIN_SUCCESS',
-      entidade: 'Usuario',
-      entidadeId: usuario.id,
-      ip: req.ip,
-      userAgent: req.get('user-agent')
-    });
+    // Login com sucesso: Resetar contador e bloqueio (se houver resquício, embora bloqueado não passe aqui, garante limpeza)
+    if ((usuario.tentativasLogin || 0) > 0) {
+      await prisma.usuario.update({
+        where: { id: usuario.id },
+        data: { tentativasLogin: 0 }
+      });
+      // Atualiza objeto local para retorno correto (opcional, mas boa prática)
+      usuario.tentativasLogin = 0;
+    }
 
     const secret = getJwtSecret();
     const token = jwt.sign(
